@@ -107,6 +107,13 @@ test("ships the solver and removes starter-only assets", async () => {
   assert.match(page, /inventory-drag-source/);
   assert.match(page, /mounted-balloon-drag-source/);
   assert.match(page, /beginPointerDrag/);
+  assert.match(page, /setPointerCapture\(event\.pointerId\)/);
+  assert.match(
+    page,
+    /onPointerDown=\{\(event\) =>\s*beginPointerDrag\(event, level, mount\.id\)/,
+  );
+  assert.match(page, /onPointerUp=\{finishPointerDrag\}/);
+  assert.match(page, /onPointerCancel=\{cancelPointerDrag\}/);
   assert.match(page, /onPointerMove=\{movePointerDrag\}/);
   assert.match(page, /elementsFromPoint/);
   assert.match(page, /drag-preview/);

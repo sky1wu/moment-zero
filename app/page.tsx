@@ -38,6 +38,11 @@ type DragPointerEvent = Pick<
   "pointerId" | "clientX" | "clientY" | "preventDefault" | "stopPropagation"
 >;
 
+type GlobalDragListeners = {
+  pointerId: number;
+  remove: () => void;
+};
+
 type DailyChallenge = {
   date: string;
   seed: string;
@@ -121,28 +126,10 @@ export default function Home() {
   const generationToken = useRef(0);
   const pointerDragRef = useRef<PointerDrag | null>(null);
   const pointerCaptureTargetRef = useRef<HTMLElement | null>(null);
-  const movePointerDragRef = useRef<(event: PointerEvent) => void>(() => {});
-  const finishPointerDragRef = useRef<(event: PointerEvent) => void>(() => {});
-  const cancelPointerDragRef = useRef<(event: PointerEvent) => void>(() => {});
+  const globalDragListenersRef = useRef<GlobalDragListeners | null>(null);
 
   useEffect(() => {
-    // Keep tracking at window level as well as through pointer capture. Some
-    // Android browsers drop capture when the pressed element is restyled after
-    // a drag starts, which otherwise makes the preview snap back immediately.
-    const handlePointerMove = (event: PointerEvent) =>
-      movePointerDragRef.current(event);
-    const handlePointerUp = (event: PointerEvent) =>
-      finishPointerDragRef.current(event);
-    const handlePointerCancel = (event: PointerEvent) =>
-      cancelPointerDragRef.current(event);
-    window.addEventListener("pointermove", handlePointerMove, { passive: false });
-    window.addEventListener("pointerup", handlePointerUp, { passive: false });
-    window.addEventListener("pointercancel", handlePointerCancel);
-    return () => {
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", handlePointerUp);
-      window.removeEventListener("pointercancel", handlePointerCancel);
-    };
+    return () => globalDragListenersRef.current?.remove();
   }, []);
 
   const loadPuzzle = useCallback(
@@ -486,6 +473,28 @@ export default function Home() {
       y: event.clientY,
     };
     pointerDragRef.current = nextDrag;
+    globalDragListenersRef.current?.remove();
+    // Track on window while this drag is active. Android can drop element
+    // pointer capture after the pressed element is restyled, but the uncaptured
+    // events still reach window.
+    const handlePointerMove = (nativeEvent: PointerEvent) =>
+      movePointerDrag(nativeEvent);
+    const handlePointerUp = (nativeEvent: PointerEvent) =>
+      finishPointerDrag(nativeEvent);
+    const handlePointerCancel = (nativeEvent: PointerEvent) =>
+      cancelPointerDrag(nativeEvent);
+    const remove = () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerCancel);
+      if (globalDragListenersRef.current?.pointerId === event.pointerId) {
+        globalDragListenersRef.current = null;
+      }
+    };
+    window.addEventListener("pointermove", handlePointerMove, { passive: false });
+    window.addEventListener("pointerup", handlePointerUp, { passive: false });
+    window.addEventListener("pointercancel", handlePointerCancel);
+    globalDragListenersRef.current = { pointerId: event.pointerId, remove };
     setPointerDrag(nextDrag);
     setDraggingMountId(sourceMountId);
     setDragOverMountId(null);
@@ -513,6 +522,9 @@ export default function Home() {
       target.releasePointerCapture(pointerId);
     }
     pointerCaptureTargetRef.current = null;
+    if (globalDragListenersRef.current?.pointerId === pointerId) {
+      globalDragListenersRef.current.remove();
+    }
   }
 
   function movePointerDrag(event: DragPointerEvent) {
@@ -566,10 +578,6 @@ export default function Home() {
     setDraggingMountId(null);
     setDragOverMountId(null);
   }
-
-  movePointerDragRef.current = movePointerDrag;
-  finishPointerDragRef.current = finishPointerDrag;
-  cancelPointerDragRef.current = cancelPointerDrag;
 
   async function sharePuzzle() {
     const url = window.location.href;

@@ -143,6 +143,8 @@ test("ships the solver and removes starter-only assets", async () => {
   assert.match(page, /window\.addEventListener\("pointermove"/);
   assert.match(page, /window\.addEventListener\("pointerup"/);
   assert.match(page, /window\.addEventListener\("pointercancel"/);
+  assert.match(page, /window\.removeEventListener\("pointermove"/);
+  assert.match(page, /globalDragListenersRef\.current\.remove\(\)/);
   assert.match(page, /passive: false/);
   assert.match(page, /elementsFromPoint/);
   assert.match(page, /drag-preview/);

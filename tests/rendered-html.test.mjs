@@ -92,6 +92,7 @@ test("ships the solver and removes starter-only assets", async () => {
   assert.match(core, /requireOpposite && x === 0 && y === 0/);
   assert.match(core, /solutionCount >= limit/);
   assert.match(page, /calculateMoment/);
+  assert.match(page, /<span>\{LIFT_BY_LEVEL\[level\]\}<\/span>/);
   assert.match(page, /moment-zero-daily-endpoint/);
   assert.match(page, /configuredEndpoint \|\| "\/api\/daily"/);
   assert.match(page, /cache: "no-store"/);

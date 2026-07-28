@@ -81,7 +81,7 @@ function BalloonMark({
       className={`balloon-mark balloon-mark--${level}${compact ? " balloon-mark--compact" : ""}`}
       aria-hidden="true"
     >
-      <span>{level}</span>
+      <span>{LIFT_BY_LEVEL[level]}</span>
     </span>
   );
 }

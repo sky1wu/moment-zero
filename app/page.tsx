@@ -433,7 +433,13 @@ export default function Home() {
     level: BalloonLevel,
     sourceMountId: string | null,
   ) {
-    if (solved || (event.pointerType === "mouse" && event.button !== 0)) return;
+    if (
+      solved ||
+      (event.pointerType === "mouse" && event.button !== 0) ||
+      (sourceMountId === null && remaining[level] <= 0)
+    ) {
+      return;
+    }
     event.preventDefault();
     event.stopPropagation();
     if (event.pointerType !== "mouse") {

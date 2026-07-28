@@ -114,10 +114,18 @@ test("ships the solver and removes starter-only assets", async () => {
   assert.match(styles, /\.balloon-mark--2\s*\{[\s\S]*?--balloon-color:/);
   assert.match(styles, /\.balloon-mark--3\s*\{[\s\S]*?--balloon-color:/);
   assert.match(styles, /\.balloon-mark--4\s*\{[\s\S]*?--balloon-color:/);
+  assert.match(
+    styles,
+    /\.inventory-item:disabled\s*\{[\s\S]*?pointer-events:\s*none;/,
+  );
   assert.doesNotMatch(page, /<p>\s*X \{moment\.x/);
   assert.match(page, /inventory-drag-source/);
   assert.match(page, /mounted-balloon-drag-source/);
   assert.match(page, /beginPointerDrag/);
+  assert.match(
+    page,
+    /sourceMountId === null && remaining\[level\] <= 0/,
+  );
   assert.match(page, /function beginBoardPointerDrag/);
   assert.match(page, /onPointerDown=\{beginBoardPointerDrag\}/);
   assert.match(

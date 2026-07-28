@@ -151,9 +151,21 @@ test("ships the solver and removes starter-only assets", async () => {
   );
   assert.match(
     styles,
+    /@media \(max-width:\s*1040px\)[\s\S]*?grid-template-columns:\s*minmax\(440px,\s*1fr\) minmax\(220px,\s*0\.55fr\) max-content;/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width:\s*960px\)[\s\S]*?\.mission-metrics,[\s\S]*?\.text-button\s*\{[\s\S]*?display:\s*none;/,
+  );
+  assert.match(
+    styles,
     /\.board-assembly\s*\{[\s\S]*?grid-template-columns:\s*34px minmax\(0,\s*1fr\) 34px;[\s\S]*?column-gap:\s*16px;[\s\S]*?row-gap:\s*16px;/,
   );
   assert.match(styles, /\.moment-axis__arrow::before/);
+  assert.match(
+    styles,
+    /\.moment-axis--vertical \.moment-axis__arrow\s*\{[\s\S]*?width:\s*27px;[\s\S]*?height:\s*27px;/,
+  );
   assert.match(
     styles,
     /@media \(max-width:\s*820px\)[\s\S]*?\.inventory-rail\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?bottom:\s*0;/,

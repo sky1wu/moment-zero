@@ -237,7 +237,7 @@ button:focus-visible {
   display: grid;
   grid-column: 1 / -1;
   grid-template-columns:
-    minmax(0, 0.8fr) minmax(300px, 1.15fr)
+    minmax(0, 0.8fr) minmax(360px, 1.15fr)
     minmax(340px, 1.5fr) max-content;
   align-items: end;
   gap: clamp(14px, 2vw, 28px);
@@ -728,11 +728,13 @@ button:focus-visible {
 }
 
 .moment-axis small {
+  width: 1em;
   color: var(--faint);
   font-size: 11px;
   font-weight: 650;
-  letter-spacing: 0.04em;
+  letter-spacing: 0;
   line-height: 1;
+  text-align: center;
 }
 
 .moment-axis__arrow {
@@ -788,12 +790,14 @@ button:focus-visible {
   grid-row: 1;
   flex-direction: column;
   justify-content: center;
-  gap: 5px;
+  gap: 7px;
   margin: 14% 0;
   border-right: 1px solid currentColor;
 }
 
 .moment-axis--vertical .moment-axis__arrow {
+  width: 27px;
+  height: 27px;
   transform: rotate(-90deg);
 }
 
@@ -1491,11 +1495,17 @@ kbd {
 
 @media (max-width: 1040px) {
   .mission-rail {
-    grid-template-columns:
-      minmax(0, 0.7fr) minmax(0, 1.5fr)
-      minmax(0, 1fr) max-content;
+    grid-template-columns: minmax(440px, 1fr) minmax(220px, 0.55fr) max-content;
     gap: 18px;
     padding: 13px 20px;
+  }
+
+  .rail-heading {
+    display: none;
+  }
+
+  .mission-setting {
+    grid-template-columns: minmax(160px, 0.85fr) minmax(240px, 1.25fr);
   }
 
   .mission-metrics div:nth-child(n + 3) {
@@ -1524,6 +1534,15 @@ kbd {
   .topbar .button--quiet {
     display: none;
   }
+
+  .mission-rail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mission-metrics,
+  .text-button {
+    display: none;
+  }
 }
 
 @media (max-width: 820px) {
@@ -1541,7 +1560,7 @@ kbd {
 
   .mission-rail {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr);
+    grid-template-columns: minmax(0, 1fr);
     padding: 13px 16px;
     order: 0;
   }
@@ -1702,6 +1721,11 @@ kbd {
   .moment-axis__arrow {
     width: 23px;
     height: 11px;
+  }
+
+  .moment-axis--vertical .moment-axis__arrow {
+    width: 23px;
+    height: 23px;
   }
 
   .moment-axis strong {

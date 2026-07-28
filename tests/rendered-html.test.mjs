@@ -156,7 +156,11 @@ test("ships the solver and removes starter-only assets", async () => {
   );
   assert.match(
     styles,
-    /@media \(max-width:\s*960px\)[\s\S]*?\.mission-metrics,[\s\S]*?\.text-button\s*\{[\s\S]*?display:\s*none;/,
+    /@media \(max-width:\s*960px\)[\s\S]*?grid-template-areas:\s*"setting setting"\s*"metrics rules";/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width:\s*960px\)[\s\S]*?\.mission-metrics\s*\{[\s\S]*?display:\s*grid;[\s\S]*?grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\);/,
   );
   assert.match(
     styles,

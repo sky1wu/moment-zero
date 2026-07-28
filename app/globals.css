@@ -1536,12 +1536,32 @@ kbd {
   }
 
   .mission-rail {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-template-areas:
+      "setting setting"
+      "metrics rules";
+    row-gap: 12px;
   }
 
-  .mission-metrics,
+  .mission-setting {
+    grid-area: setting;
+  }
+
+  .mission-metrics {
+    display: grid;
+    grid-area: metrics;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .mission-metrics div:nth-child(n + 3) {
+    display: grid;
+  }
+
   .text-button {
-    display: none;
+    display: inline-flex;
+    grid-area: rules;
+    align-self: center;
+    justify-self: end;
   }
 }
 
@@ -1560,14 +1580,14 @@ kbd {
 
   .mission-rail {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) max-content;
     padding: 13px 16px;
     order: 0;
   }
 
-  .mission-metrics,
-  .text-button {
-    display: none;
+  .mission-metrics div {
+    padding-right: 10px;
+    padding-left: 10px;
   }
 
   .board-stage {
@@ -1683,7 +1703,7 @@ kbd {
   }
 
   .mission-rail {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) max-content;
   }
 
   .rail-heading {
@@ -1692,6 +1712,20 @@ kbd {
 
   .mission-setting {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  }
+
+  .mission-metrics div {
+    padding-right: 6px;
+    padding-left: 6px;
+  }
+
+  .mission-metrics dd {
+    font-size: 12px;
+  }
+
+  .text-button {
+    min-height: 30px;
+    font-size: 10px;
   }
 
   .board-stage {

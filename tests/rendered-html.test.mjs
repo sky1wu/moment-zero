@@ -107,6 +107,8 @@ test("ships the solver and removes starter-only assets", async () => {
   assert.match(page, /moment-axis__arrow/);
   assert.doesNotMatch(page, /const horizontalArrow|const verticalArrow/);
   assert.match(page, /platform-tilt/);
+  assert.doesNotMatch(page, /status-chip|platform-summary|statusText/);
+  assert.doesNotMatch(styles, /\.status-chip|\.platform-summary/);
   assert.match(page, /data-multiplier=\{mount\.multiplier\}/);
   assert.match(page, /data-balloon-level=\{level\}/);
   assert.match(styles, /\.board-cell--mount\[data-multiplier="2"\]/);

@@ -589,15 +589,6 @@ export default function Home() {
     "--shadow-blur": `${26 + tiltMagnitude * 20}px`,
     "--edge-depth": `${5 + tiltMagnitude * 7}px`,
   } as CSSProperties;
-  const statusText =
-    moment.placed === 0
-      ? "等待挂载"
-      : solved
-        ? "平衡锁定"
-        : Math.abs(moment.x) + Math.abs(moment.y) <= 2
-          ? "接近平衡"
-          : "存在偏转";
-
   const boardCells = puzzle
     ? Array.from({ length: puzzle.size * puzzle.size }, (_, index) => {
         const row = Math.floor(index / puzzle.size);
@@ -737,10 +728,6 @@ export default function Home() {
               <span className="eyebrow">平台</span>
               <h2 id="board-title">回收平台</h2>
             </div>
-            <div className={`status-chip${solved ? " is-solved" : ""}`}>
-              <i />
-              {statusText}
-            </div>
           </div>
 
           <div className="board-assembly">
@@ -854,15 +841,6 @@ export default function Home() {
                 <i />
               </span>
               <strong>{Math.abs(moment.x)}</strong>
-            </div>
-          </div>
-
-          <div className="platform-summary" aria-live="polite">
-            <div>
-              <strong>{statusText}</strong>
-              <span>
-                已挂载 {moment.placed} / {total}
-              </span>
             </div>
           </div>
         </section>

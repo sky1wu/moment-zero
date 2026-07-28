@@ -434,29 +434,12 @@ button:focus-visible {
   letter-spacing: -0.02em;
 }
 
-.status-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 6px 9px;
-  border-radius: 999px;
-  background: var(--surface-soft);
-  color: var(--muted);
-  font-size: 9px;
-}
-
-.status-chip i,
 .toast i {
   display: block;
   width: 5px;
   height: 5px;
   border-radius: 50%;
   background: currentColor;
-}
-
-.status-chip.is-solved {
-  background: var(--accent-soft);
-  color: var(--accent);
 }
 
 .board-assembly {
@@ -834,31 +817,6 @@ button:focus-visible {
   gap: 7px;
   margin: 0 14%;
   border-top: 1px solid currentColor;
-}
-
-.platform-summary {
-  display: flex;
-  width: min(100%, 620px);
-  align-items: center;
-  justify-content: flex-start;
-  margin-top: 12px;
-  padding-top: 13px;
-  border-top: 1px solid var(--line);
-}
-
-.platform-summary > div {
-  display: grid;
-  gap: 2px;
-}
-
-.platform-summary strong {
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.platform-summary > div span {
-  color: var(--muted);
-  font-size: 9px;
 }
 
 .balloon-mark {
@@ -1816,12 +1774,6 @@ kbd {
 
   .moment-axis small {
     font-size: 10px;
-  }
-
-  .platform-summary {
-    width: calc(100% - 68px);
-    margin-top: 8px;
-    padding-top: 9px;
   }
 
   .inventory-item {

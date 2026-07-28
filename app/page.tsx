@@ -129,7 +129,26 @@ export default function Home() {
   const globalDragListenersRef = useRef<GlobalDragListeners | null>(null);
 
   useEffect(() => {
-    return () => globalDragListenersRef.current?.remove();
+    // Chrome decides whether a touch becomes a scroll gesture on the compositor
+    // thread, and it only consults the main thread when a non-passive touch
+    // listener was already registered when the touch started. `touch-action`
+    // alone is not enough for the balloons: they sit inside the rotated,
+    // composited `.platform-tilt` subtree, where Android Chrome misses their
+    // touch-action region and starts scrolling anyway — which fires
+    // `pointercancel` and snaps the drag back on the first move. Registering
+    // this listener up front keeps the decision on the main thread, and
+    // preventing the default while a drag is active keeps the pointer stream
+    // alive. It is a no-op for mouse input, so desktop dragging is untouched.
+    const blockTouchScrollWhileDragging = (event: TouchEvent) => {
+      if (pointerDragRef.current && event.cancelable) event.preventDefault();
+    };
+    document.addEventListener("touchmove", blockTouchScrollWhileDragging, {
+      passive: false,
+    });
+    return () => {
+      document.removeEventListener("touchmove", blockTouchScrollWhileDragging);
+      globalDragListenersRef.current?.remove();
+    };
   }, []);
 
   const loadPuzzle = useCallback(

@@ -146,6 +146,14 @@ test("ships the solver and removes starter-only assets", async () => {
   assert.match(page, /window\.removeEventListener\("pointermove"/);
   assert.match(page, /globalDragListenersRef\.current\.remove\(\)/);
   assert.match(page, /passive: false/);
+  assert.match(
+    page,
+    /document\.addEventListener\("touchmove", blockTouchScrollWhileDragging/,
+  );
+  assert.match(
+    page,
+    /if \(pointerDragRef\.current && event\.cancelable\) event\.preventDefault\(\)/,
+  );
   assert.match(page, /elementsFromPoint/);
   assert.match(page, /drag-preview/);
   assert.match(page, /returnBalloonToInventory/);

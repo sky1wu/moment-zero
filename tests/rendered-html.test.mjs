@@ -126,6 +126,19 @@ test("ships the solver and removes starter-only assets", async () => {
     styles,
     /\.drag-preview--card\s*\{[\s\S]*?width:\s*108px !important;[\s\S]*?height:\s*108px !important;/,
   );
+  assert.match(
+    styles,
+    /\.mission-rail\s*\{[\s\S]*?align-items:\s*end;[\s\S]*?gap:\s*clamp\(/,
+  );
+  assert.match(
+    styles,
+    /\.mission-setting\s*\{[\s\S]*?align-items:\s*end;/,
+  );
+  assert.match(styles, /\.mission-rail\s*>\s*\*,\s*\.mission-setting\s*>\s*\*/);
+  assert.match(
+    styles,
+    /@media \(max-width:\s*960px\)[\s\S]*?\.topbar__mission,[\s\S]*?display:\s*none;/,
+  );
   assert.match(layout, /零矩协议/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);
   const previewDirectory = new URL("../app/_sites-preview", import.meta.url);

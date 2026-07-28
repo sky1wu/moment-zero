@@ -103,7 +103,10 @@ test("ships the solver and removes starter-only assets", async () => {
   assert.match(page, /navigator\.clipboard\.writeText/);
   assert.match(page, /moment-axis--vertical/);
   assert.match(page, /moment-axis--horizontal/);
+  assert.match(page, /moment-axis__arrow/);
+  assert.doesNotMatch(page, /const horizontalArrow|const verticalArrow/);
   assert.match(page, /platform-tilt/);
+  assert.doesNotMatch(page, /<p>\s*X \{moment\.x/);
   assert.match(page, /inventory-drag-source/);
   assert.match(page, /mounted-balloon-drag-source/);
   assert.match(page, /beginPointerDrag/);
@@ -145,6 +148,15 @@ test("ships the solver and removes starter-only assets", async () => {
   assert.match(
     styles,
     /@media \(max-width:\s*960px\)[\s\S]*?\.topbar__mission,[\s\S]*?display:\s*none;/,
+  );
+  assert.match(
+    styles,
+    /\.board-assembly\s*\{[\s\S]*?grid-template-columns:\s*34px minmax\(0,\s*1fr\) 34px;[\s\S]*?column-gap:\s*16px;[\s\S]*?row-gap:\s*16px;/,
+  );
+  assert.match(styles, /\.moment-axis__arrow::before/);
+  assert.match(
+    styles,
+    /@media \(max-width:\s*820px\)[\s\S]*?\.inventory-rail\s*\{[\s\S]*?position:\s*fixed;[\s\S]*?bottom:\s*0;/,
   );
   assert.match(layout, /零矩协议/);
   assert.doesNotMatch(packageJson, /react-loading-skeleton/);

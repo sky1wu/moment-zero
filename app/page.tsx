@@ -556,8 +556,6 @@ export default function Home() {
   const tiltX = normalizeTilt(moment.x);
   const tiltY = normalizeTilt(moment.y);
   const tiltMagnitude = Math.min(1, (Math.abs(tiltX) + Math.abs(tiltY)) / 12);
-  const horizontalArrow = moment.x === 0 ? "↔" : moment.x > 0 ? "→" : "←";
-  const verticalArrow = moment.y === 0 ? "↕" : moment.y > 0 ? "↑" : "↓";
   const platformTiltStyle = {
     "--tilt-x": `${-tiltY}deg`,
     "--tilt-y": `${-tiltX}deg`,
@@ -724,10 +722,12 @@ export default function Home() {
 
           <div className="board-assembly">
             <div
-              className={`moment-axis moment-axis--vertical${moment.y === 0 ? " is-zero" : ""}`}
+              className={`moment-axis moment-axis--vertical ${moment.y === 0 ? "is-zero" : moment.y > 0 ? "is-positive" : "is-negative"}`}
               aria-label={`纵向力矩 ${moment.y}`}
             >
-              <span>{verticalArrow}</span>
+              <span className="moment-axis__arrow" aria-hidden="true">
+                <i />
+              </span>
               <strong>{Math.abs(moment.y)}</strong>
               <small>Y</small>
             </div>
@@ -819,11 +819,13 @@ export default function Home() {
             </div>
 
             <div
-              className={`moment-axis moment-axis--horizontal${moment.x === 0 ? " is-zero" : ""}`}
+              className={`moment-axis moment-axis--horizontal ${moment.x === 0 ? "is-zero" : moment.x > 0 ? "is-positive" : "is-negative"}`}
               aria-label={`横向力矩 ${moment.x}`}
             >
               <small>X</small>
-              <span>{horizontalArrow}</span>
+              <span className="moment-axis__arrow" aria-hidden="true">
+                <i />
+              </span>
               <strong>{Math.abs(moment.x)}</strong>
             </div>
           </div>
@@ -835,11 +837,6 @@ export default function Home() {
                 已挂载 {moment.placed} / {total}
               </span>
             </div>
-            <p>
-              X {moment.x > 0 ? `+${moment.x}` : moment.x}
-              <span />
-              Y {moment.y > 0 ? `+${moment.y}` : moment.y}
-            </p>
           </div>
         </section>
 

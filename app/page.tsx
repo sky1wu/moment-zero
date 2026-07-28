@@ -33,6 +33,16 @@ type PointerDrag = {
   y: number;
 };
 
+type DragPointerEvent = Pick<
+  PointerEvent,
+  "pointerId" | "clientX" | "clientY" | "preventDefault" | "stopPropagation"
+>;
+
+type GlobalDragListeners = {
+  pointerId: number;
+  remove: () => void;
+};
+
 type DailyChallenge = {
   date: string;
   seed: string;
@@ -116,6 +126,11 @@ export default function Home() {
   const generationToken = useRef(0);
   const pointerDragRef = useRef<PointerDrag | null>(null);
   const pointerCaptureTargetRef = useRef<HTMLElement | null>(null);
+  const globalDragListenersRef = useRef<GlobalDragListeners | null>(null);
+
+  useEffect(() => {
+    return () => globalDragListenersRef.current?.remove();
+  }, []);
 
   const loadPuzzle = useCallback(
     (nextSeed: string, nextDifficulty: Difficulty) => {
@@ -458,6 +473,28 @@ export default function Home() {
       y: event.clientY,
     };
     pointerDragRef.current = nextDrag;
+    globalDragListenersRef.current?.remove();
+    // Track on window while this drag is active. Android can drop element
+    // pointer capture after the pressed element is restyled, but the uncaptured
+    // events still reach window.
+    const handlePointerMove = (nativeEvent: PointerEvent) =>
+      movePointerDrag(nativeEvent);
+    const handlePointerUp = (nativeEvent: PointerEvent) =>
+      finishPointerDrag(nativeEvent);
+    const handlePointerCancel = (nativeEvent: PointerEvent) =>
+      cancelPointerDrag(nativeEvent);
+    const remove = () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerCancel);
+      if (globalDragListenersRef.current?.pointerId === event.pointerId) {
+        globalDragListenersRef.current = null;
+      }
+    };
+    window.addEventListener("pointermove", handlePointerMove, { passive: false });
+    window.addEventListener("pointerup", handlePointerUp, { passive: false });
+    window.addEventListener("pointercancel", handlePointerCancel);
+    globalDragListenersRef.current = { pointerId: event.pointerId, remove };
     setPointerDrag(nextDrag);
     setDraggingMountId(sourceMountId);
     setDragOverMountId(null);
@@ -485,9 +522,12 @@ export default function Home() {
       target.releasePointerCapture(pointerId);
     }
     pointerCaptureTargetRef.current = null;
+    if (globalDragListenersRef.current?.pointerId === pointerId) {
+      globalDragListenersRef.current.remove();
+    }
   }
 
-  function movePointerDrag(event: ReactPointerEvent<HTMLElement>) {
+  function movePointerDrag(event: DragPointerEvent) {
     const active = pointerDragRef.current;
     if (!active || active.pointerId !== event.pointerId) return;
     event.preventDefault();
@@ -505,7 +545,7 @@ export default function Home() {
     );
   }
 
-  function finishPointerDrag(event: ReactPointerEvent<HTMLElement>) {
+  function finishPointerDrag(event: DragPointerEvent) {
     const active = pointerDragRef.current;
     if (!active || active.pointerId !== event.pointerId) return;
     event.preventDefault();
@@ -530,7 +570,7 @@ export default function Home() {
     setDragOverMountId(null);
   }
 
-  function cancelPointerDrag(event: ReactPointerEvent<HTMLElement>) {
+  function cancelPointerDrag(event: DragPointerEvent) {
     if (pointerDragRef.current?.pointerId !== event.pointerId) return;
     releasePointerCapture(event.pointerId);
     pointerDragRef.current = null;
@@ -812,9 +852,6 @@ export default function Home() {
                                 beginPointerDrag(event, level, mount.id);
                               }
                             }}
-                            onPointerMove={movePointerDrag}
-                            onPointerUp={finishPointerDrag}
-                            onPointerCancel={cancelPointerDrag}
                           >
                             <BalloonMark level={level} compact />
                           </button>
@@ -875,9 +912,6 @@ export default function Home() {
                   onPointerDown={(event) =>
                     beginPointerDrag(event, level, null)
                   }
-                  onPointerMove={movePointerDrag}
-                  onPointerUp={finishPointerDrag}
-                  onPointerCancel={cancelPointerDrag}
                 >
                   <span
                     className="inventory-drag-source"

@@ -576,6 +576,13 @@ button:focus-visible {
 .board-cell--mount.has-balloon {
   border-color: var(--accent);
   background: var(--accent-soft);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.board-cell--mount.has-balloon:active {
+  cursor: grabbing;
 }
 
 .board-cell--mount.is-hinted {

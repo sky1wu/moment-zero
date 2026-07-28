@@ -461,16 +461,13 @@ export default function Home() {
   function beginBoardPointerDrag(
     event: ReactPointerEvent<HTMLDivElement>,
   ) {
-    if (event.pointerType !== "mouse") return;
-    const source = document
+    const sourceMountId = document
       .elementsFromPoint(event.clientX, event.clientY)
-      .map((element) =>
-        element.closest<HTMLElement>(".mounted-balloon-drag-source"),
+      .map(
+        (element) =>
+          element.closest<HTMLElement>("[data-mount-id]")?.dataset.mountId,
       )
       .find(Boolean);
-    const sourceMountId = source
-      ?.closest<HTMLElement>("[data-mount-id]")
-      ?.dataset.mountId;
     const level = sourceMountId ? assignments[sourceMountId] : 0;
     if (!sourceMountId || !level) return;
     beginPointerDrag(event, level, sourceMountId);

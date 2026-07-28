@@ -113,6 +113,10 @@ test("ships the solver and removes starter-only assets", async () => {
   assert.match(page, /beginPointerDrag/);
   assert.match(page, /function beginBoardPointerDrag/);
   assert.match(page, /onPointerDown=\{beginBoardPointerDrag\}/);
+  assert.match(
+    page,
+    /closest<HTMLElement>\("\[data-mount-id\]"\)\?\.dataset\.mountId/,
+  );
   assert.match(page, /if \(event\.pointerType !== "mouse"\)/);
   assert.match(page, /setPointerCapture\(event\.pointerId\)/);
   assert.match(

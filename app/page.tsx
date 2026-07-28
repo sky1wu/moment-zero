@@ -33,6 +33,11 @@ type PointerDrag = {
   y: number;
 };
 
+type DragPointerEvent = Pick<
+  PointerEvent,
+  "pointerId" | "clientX" | "clientY" | "preventDefault" | "stopPropagation"
+>;
+
 type DailyChallenge = {
   date: string;
   seed: string;
@@ -116,6 +121,29 @@ export default function Home() {
   const generationToken = useRef(0);
   const pointerDragRef = useRef<PointerDrag | null>(null);
   const pointerCaptureTargetRef = useRef<HTMLElement | null>(null);
+  const movePointerDragRef = useRef<(event: PointerEvent) => void>(() => {});
+  const finishPointerDragRef = useRef<(event: PointerEvent) => void>(() => {});
+  const cancelPointerDragRef = useRef<(event: PointerEvent) => void>(() => {});
+
+  useEffect(() => {
+    // Keep tracking at window level as well as through pointer capture. Some
+    // Android browsers drop capture when the pressed element is restyled after
+    // a drag starts, which otherwise makes the preview snap back immediately.
+    const handlePointerMove = (event: PointerEvent) =>
+      movePointerDragRef.current(event);
+    const handlePointerUp = (event: PointerEvent) =>
+      finishPointerDragRef.current(event);
+    const handlePointerCancel = (event: PointerEvent) =>
+      cancelPointerDragRef.current(event);
+    window.addEventListener("pointermove", handlePointerMove, { passive: false });
+    window.addEventListener("pointerup", handlePointerUp, { passive: false });
+    window.addEventListener("pointercancel", handlePointerCancel);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerCancel);
+    };
+  }, []);
 
   const loadPuzzle = useCallback(
     (nextSeed: string, nextDifficulty: Difficulty) => {
@@ -487,7 +515,7 @@ export default function Home() {
     pointerCaptureTargetRef.current = null;
   }
 
-  function movePointerDrag(event: ReactPointerEvent<HTMLElement>) {
+  function movePointerDrag(event: DragPointerEvent) {
     const active = pointerDragRef.current;
     if (!active || active.pointerId !== event.pointerId) return;
     event.preventDefault();
@@ -505,7 +533,7 @@ export default function Home() {
     );
   }
 
-  function finishPointerDrag(event: ReactPointerEvent<HTMLElement>) {
+  function finishPointerDrag(event: DragPointerEvent) {
     const active = pointerDragRef.current;
     if (!active || active.pointerId !== event.pointerId) return;
     event.preventDefault();
@@ -530,7 +558,7 @@ export default function Home() {
     setDragOverMountId(null);
   }
 
-  function cancelPointerDrag(event: ReactPointerEvent<HTMLElement>) {
+  function cancelPointerDrag(event: DragPointerEvent) {
     if (pointerDragRef.current?.pointerId !== event.pointerId) return;
     releasePointerCapture(event.pointerId);
     pointerDragRef.current = null;
@@ -538,6 +566,10 @@ export default function Home() {
     setDraggingMountId(null);
     setDragOverMountId(null);
   }
+
+  movePointerDragRef.current = movePointerDrag;
+  finishPointerDragRef.current = finishPointerDrag;
+  cancelPointerDragRef.current = cancelPointerDrag;
 
   async function sharePuzzle() {
     const url = window.location.href;
@@ -812,9 +844,6 @@ export default function Home() {
                                 beginPointerDrag(event, level, mount.id);
                               }
                             }}
-                            onPointerMove={movePointerDrag}
-                            onPointerUp={finishPointerDrag}
-                            onPointerCancel={cancelPointerDrag}
                           >
                             <BalloonMark level={level} compact />
                           </button>
@@ -875,9 +904,6 @@ export default function Home() {
                   onPointerDown={(event) =>
                     beginPointerDrag(event, level, null)
                   }
-                  onPointerMove={movePointerDrag}
-                  onPointerUp={finishPointerDrag}
-                  onPointerCancel={cancelPointerDrag}
                 >
                   <span
                     className="inventory-drag-source"

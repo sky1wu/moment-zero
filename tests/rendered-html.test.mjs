@@ -140,9 +140,10 @@ test("ships the solver and removes starter-only assets", async () => {
     page,
     /if \(event\.pointerType !== "mouse"\) \{\s*beginPointerDrag\(event, level, mount\.id\)/,
   );
-  assert.match(page, /onPointerUp=\{finishPointerDrag\}/);
-  assert.match(page, /onPointerCancel=\{cancelPointerDrag\}/);
-  assert.match(page, /onPointerMove=\{movePointerDrag\}/);
+  assert.match(page, /window\.addEventListener\("pointermove"/);
+  assert.match(page, /window\.addEventListener\("pointerup"/);
+  assert.match(page, /window\.addEventListener\("pointercancel"/);
+  assert.match(page, /passive: false/);
   assert.match(page, /elementsFromPoint/);
   assert.match(page, /drag-preview/);
   assert.match(page, /returnBalloonToInventory/);

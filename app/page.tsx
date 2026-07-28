@@ -786,6 +786,7 @@ export default function Home() {
                         role="gridcell"
                         tabIndex={0}
                         data-mount-id={mount.id}
+                        data-multiplier={mount.multiplier}
                         aria-label={`第${row + 1}行第${column + 1}列，${mount.multiplier}倍挂载点，${level ? `已放置${level}级气球` : "空"}`}
                         onClick={() => placeBalloon(mount.id, selectedLevel)}
                         onKeyDown={(event) => {
@@ -882,6 +883,7 @@ export default function Home() {
                   type="button"
                   className={`inventory-item${isSelected ? " is-selected" : ""}${hint?.level === level ? " is-hinted" : ""}`}
                   key={level}
+                  data-balloon-level={level}
                   disabled={unavailable}
                   aria-label={`${level}级气球，升力系数${LIFT_BY_LEVEL[level]}，剩余${remaining[level]}`}
                   aria-pressed={isSelected}

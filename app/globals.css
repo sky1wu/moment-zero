@@ -555,8 +555,12 @@ button:focus-visible {
 }
 
 .board-cell--mount {
-  border-color: #9ba29d;
-  background: #f9faf8;
+  --mount-color: #2f7664;
+  --mount-border: #91b9ae;
+  --mount-surface: #edf7f3;
+  --mount-hover: #f7fcfa;
+  border-color: var(--mount-border);
+  background: var(--mount-surface);
   cursor: pointer;
   transition:
     border-color 150ms ease,
@@ -565,17 +569,32 @@ button:focus-visible {
     box-shadow 150ms ease;
 }
 
+.board-cell--mount[data-multiplier="2"] {
+  --mount-color: #9b620f;
+  --mount-border: #d3ad74;
+  --mount-surface: #fbf4e7;
+  --mount-hover: #fffaf1;
+}
+
+.board-cell--mount[data-multiplier="3"] {
+  --mount-color: #6d52a2;
+  --mount-border: #ad9bc9;
+  --mount-surface: #f3f0f8;
+  --mount-hover: #faf8fd;
+}
+
 .board-cell--mount:hover {
   z-index: 3;
-  border-color: var(--accent);
-  background: var(--surface);
+  border-color: var(--mount-color);
+  background: var(--mount-hover);
   transform: translateY(-2px);
   box-shadow: 0 7px 14px rgba(40, 48, 43, 0.11);
 }
 
 .board-cell--mount.has-balloon {
-  border-color: var(--accent);
-  background: var(--accent-soft);
+  border-color: var(--mount-color);
+  background: var(--mount-surface);
+  box-shadow: inset 0 0 0 1px var(--mount-border);
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -641,7 +660,7 @@ button:focus-visible {
   left: 50%;
   width: 11px;
   height: 11px;
-  border: 2px solid var(--accent);
+  border: 2px solid var(--mount-color);
   border-radius: 50%;
   transform: translate(-50%, -50%);
 }
@@ -653,7 +672,7 @@ button:focus-visible {
   width: 3px;
   height: 3px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--mount-color);
   content: "";
   transform: translate(-50%, -50%);
 }
@@ -663,7 +682,7 @@ button:focus-visible {
   z-index: 4;
   top: 5px;
   right: 6px;
-  color: var(--accent);
+  color: var(--mount-color);
   font-family: var(--font-mono);
   font-size: clamp(7px, 0.72vw, 9px);
   font-weight: 650;
@@ -843,13 +862,15 @@ button:focus-visible {
 }
 
 .balloon-mark {
+  --balloon-color: #2563a7;
+  --balloon-fill: #eaf2fb;
   position: relative;
   display: grid;
   width: 48px;
   height: 48px;
   flex: 0 0 auto;
   place-items: center;
-  color: var(--ink);
+  color: var(--balloon-color);
 }
 
 .balloon-mark::before {
@@ -857,7 +878,7 @@ button:focus-visible {
   inset: 4px;
   border: 2px solid currentColor;
   border-radius: 50%;
-  background: var(--surface);
+  background: var(--balloon-fill);
   box-shadow: 0 2px 5px rgba(35, 43, 38, 0.1);
   content: "";
 }
@@ -870,7 +891,7 @@ button:focus-visible {
   height: 6px;
   border-right: 2px solid currentColor;
   border-bottom: 2px solid currentColor;
-  background: var(--surface);
+  background: var(--balloon-fill);
   content: "";
   transform: translateX(-50%) rotate(45deg);
 }
@@ -885,19 +906,18 @@ button:focus-visible {
 }
 
 .balloon-mark--2 {
-  color: #5e6561;
+  --balloon-color: #087d78;
+  --balloon-fill: #e4f6f3;
 }
 
 .balloon-mark--3 {
-  color: #3d4440;
+  --balloon-color: #b75b0a;
+  --balloon-fill: #fff0df;
 }
 
 .balloon-mark--4 {
-  color: var(--accent);
-}
-
-.balloon-mark--4::before {
-  background: var(--accent-soft);
+  --balloon-color: #b42364;
+  --balloon-fill: #fbe8f1;
 }
 
 .balloon-mark--compact {
@@ -986,12 +1006,32 @@ button:focus-visible {
 
 .inventory-item:hover,
 .inventory-item.is-selected {
-  background: var(--surface-soft);
+  background: var(--balloon-row-surface, var(--surface-soft));
   color: var(--ink);
 }
 
 .inventory-item.is-selected {
-  box-shadow: inset 3px 0 var(--accent);
+  box-shadow: inset 3px 0 var(--balloon-row-color, var(--accent));
+}
+
+.inventory-item[data-balloon-level="1"] {
+  --balloon-row-color: #2563a7;
+  --balloon-row-surface: #f0f5fb;
+}
+
+.inventory-item[data-balloon-level="2"] {
+  --balloon-row-color: #087d78;
+  --balloon-row-surface: #edf8f6;
+}
+
+.inventory-item[data-balloon-level="3"] {
+  --balloon-row-color: #b75b0a;
+  --balloon-row-surface: #fff5e9;
+}
+
+.inventory-item[data-balloon-level="4"] {
+  --balloon-row-color: #b42364;
+  --balloon-row-surface: #fceef4;
 }
 
 .inventory-item.is-hinted {

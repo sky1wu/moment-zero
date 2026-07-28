@@ -107,6 +107,13 @@ test("ships the solver and removes starter-only assets", async () => {
   assert.match(page, /moment-axis__arrow/);
   assert.doesNotMatch(page, /const horizontalArrow|const verticalArrow/);
   assert.match(page, /platform-tilt/);
+  assert.match(page, /data-multiplier=\{mount\.multiplier\}/);
+  assert.match(page, /data-balloon-level=\{level\}/);
+  assert.match(styles, /\.board-cell--mount\[data-multiplier="2"\]/);
+  assert.match(styles, /\.board-cell--mount\[data-multiplier="3"\]/);
+  assert.match(styles, /\.balloon-mark--2\s*\{[\s\S]*?--balloon-color:/);
+  assert.match(styles, /\.balloon-mark--3\s*\{[\s\S]*?--balloon-color:/);
+  assert.match(styles, /\.balloon-mark--4\s*\{[\s\S]*?--balloon-color:/);
   assert.doesNotMatch(page, /<p>\s*X \{moment\.x/);
   assert.match(page, /inventory-drag-source/);
   assert.match(page, /mounted-balloon-drag-source/);

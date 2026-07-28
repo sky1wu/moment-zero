@@ -1,0 +1,35 @@
+# 零矩协议
+
+一款基于力矩平衡的轻量解谜游戏。把不同升力的气球放到 5×5 平台上，使横向与纵向总力矩同时归零。
+
+在线体验：[GitHub Pages](https://sky1wu.github.io/moment-zero/)
+
+## 功能
+
+- 随机种子与三档难度
+- 唯一解题目生成器
+- 轴对称、中心对称与自由图形
+- 每日一题
+- 拖放、提示、撤销和完成记录
+
+## 本地运行
+
+需要 Node.js 22.13 或更高版本。
+
+```bash
+npm install
+npm run dev
+```
+
+运行完整检查：
+
+```bash
+npm test
+npm run lint
+```
+
+## GitHub Pages
+
+`Deploy GitHub Pages` 工作流会在主分支更新时部署，并于每天 UTC 00:07 重新生成每日一题。
+
+每日种子由 Actions 中的 `DAILY_SEED_SECRET` 通过 HMAC-SHA-256 计算。仓库和网页只包含当天结果，不包含密钥或未来种子。

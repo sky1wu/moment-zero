@@ -436,11 +436,13 @@ export default function Home() {
     if (solved || (event.pointerType === "mouse" && event.button !== 0)) return;
     event.preventDefault();
     event.stopPropagation();
-    try {
-      event.currentTarget.setPointerCapture(event.pointerId);
-      pointerCaptureTargetRef.current = event.currentTarget;
-    } catch {
-      pointerCaptureTargetRef.current = null;
+    if (event.pointerType !== "mouse") {
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+        pointerCaptureTargetRef.current = event.currentTarget;
+      } catch {
+        pointerCaptureTargetRef.current = null;
+      }
     }
     const nextDrag: PointerDrag = {
       level,
@@ -454,6 +456,24 @@ export default function Home() {
     setDraggingMountId(sourceMountId);
     setDragOverMountId(null);
     if (sourceMountId === null) setSelectedLevel(level);
+  }
+
+  function beginBoardPointerDrag(
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) {
+    if (event.pointerType !== "mouse") return;
+    const source = document
+      .elementsFromPoint(event.clientX, event.clientY)
+      .map((element) =>
+        element.closest<HTMLElement>(".mounted-balloon-drag-source"),
+      )
+      .find(Boolean);
+    const sourceMountId = source
+      ?.closest<HTMLElement>("[data-mount-id]")
+      ?.dataset.mountId;
+    const level = sourceMountId ? assignments[sourceMountId] : 0;
+    if (!sourceMountId || !level) return;
+    beginPointerDrag(event, level, sourceMountId);
   }
 
   function releasePointerCapture(pointerId: number) {
@@ -738,6 +758,7 @@ export default function Home() {
                   className="board-grid"
                   role="grid"
                   aria-label={`${puzzle?.size ?? 0}乘${puzzle?.size ?? 0}回收平台`}
+                  onPointerDown={beginBoardPointerDrag}
                   style={
                     {
                       "--board-size": puzzle?.size ?? 5,
@@ -795,9 +816,11 @@ export default function Home() {
                             aria-label="拖动气球到其他挂载点"
                             title="拖动气球到其他挂载点"
                             onClick={(event) => event.stopPropagation()}
-                            onPointerDown={(event) =>
-                              beginPointerDrag(event, level, mount.id)
-                            }
+                            onPointerDown={(event) => {
+                              if (event.pointerType !== "mouse") {
+                                beginPointerDrag(event, level, mount.id);
+                              }
+                            }}
                             onPointerMove={movePointerDrag}
                             onPointerUp={finishPointerDrag}
                             onPointerCancel={cancelPointerDrag}

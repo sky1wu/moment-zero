@@ -30,6 +30,6 @@ npm run lint
 
 ## GitHub Pages
 
-`Deploy GitHub Pages` 工作流会在主分支更新时部署，并于每天 UTC 00:07 重新生成每日一题。
+`Deploy GitHub Pages` 工作流会在主分支更新时部署，并于每天 UTC 00:23 起错峰生成每日一题；若线上日期仍未更新，会在 UTC 00:53 与 01:23 自动重试。
 
 每日种子由 Actions 中的 `DAILY_SEED_SECRET` 通过 HMAC-SHA-256 计算。仓库和网页只包含当天结果，不包含密钥或未来种子。

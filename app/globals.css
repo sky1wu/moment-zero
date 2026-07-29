@@ -552,6 +552,21 @@ button:focus-visible {
     box-shadow 150ms ease;
 }
 
+.board-cell--mount.is-empty {
+  border-width: 2px;
+  background:
+    linear-gradient(
+      135deg,
+      transparent 0 46%,
+      color-mix(in srgb, var(--mount-color) 8%, transparent) 46% 54%,
+      transparent 54% 100%
+    ),
+    var(--mount-surface);
+  box-shadow:
+    inset 0 0 0 3px color-mix(in srgb, var(--surface) 54%, transparent),
+    inset 0 -2px 0 color-mix(in srgb, var(--mount-color) 9%, transparent);
+}
+
 .board-cell--mount[data-multiplier="2"] {
   --mount-color: #9b620f;
   --mount-border: #d3ad74;
@@ -576,8 +591,10 @@ button:focus-visible {
 
 .board-cell--mount.has-balloon {
   border-color: var(--mount-color);
-  background: var(--mount-surface);
-  box-shadow: inset 0 0 0 1px var(--mount-border);
+  background: color-mix(in srgb, var(--mount-surface) 62%, var(--tile));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--mount-border) 70%, transparent),
+    inset 0 -3px 0 color-mix(in srgb, var(--mount-color) 8%, transparent);
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -608,8 +625,8 @@ button:focus-visible {
   z-index: 5;
   top: 50%;
   left: 50%;
-  width: clamp(30px, 4vw, 49px);
-  height: clamp(30px, 4vw, 49px);
+  width: clamp(34px, 4.4vw, 54px);
+  height: clamp(34px, 4.4vw, 54px);
   padding: 0;
   border: 0;
   background: transparent;
@@ -641,23 +658,40 @@ button:focus-visible {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 11px;
-  height: 11px;
-  border: 2px solid var(--mount-color);
-  border-radius: 50%;
+  width: calc(100% - clamp(13px, 1.6vw, 20px));
+  height: calc(100% - clamp(13px, 1.6vw, 20px));
+  border: 1.5px dashed var(--mount-color);
+  border-radius: 5px;
+  opacity: 0.72;
   transform: translate(-50%, -50%);
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease;
 }
 
+.mount-crosshair::before,
 .mount-crosshair::after {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
   background: var(--mount-color);
   content: "";
   transform: translate(-50%, -50%);
+}
+
+.mount-crosshair::before {
+  width: clamp(8px, 1vw, 12px);
+  height: 2px;
+}
+
+.mount-crosshair::after {
+  width: 2px;
+  height: clamp(8px, 1vw, 12px);
+}
+
+.board-cell--mount.has-balloon .mount-crosshair {
+  opacity: 0.12;
+  transform: translate(-50%, -50%) scale(0.82);
 }
 
 .mount-multiplier {
@@ -883,14 +917,17 @@ button:focus-visible {
   z-index: 3;
   top: 50%;
   left: 50%;
-  width: clamp(30px, 4vw, 49px);
-  height: clamp(30px, 4vw, 49px);
+  width: clamp(34px, 4.4vw, 54px);
+  height: clamp(34px, 4.4vw, 54px);
   animation: balloon-pop 220ms cubic-bezier(0.2, 1.3, 0.35, 1) both;
   transform: translate(-50%, -50%);
 }
 
 .balloon-mark--compact::before {
   inset: 3px;
+  box-shadow:
+    0 0 0 3px rgba(255, 255, 255, 0.92),
+    0 4px 9px rgba(35, 43, 38, 0.18);
 }
 
 .balloon-mark--compact::after {
@@ -1756,6 +1793,32 @@ kbd {
 
   .board-grid {
     gap: 4px;
+  }
+
+  .board-cell--mount.is-empty {
+    border-width: 2px;
+    box-shadow:
+      inset 0 0 0 2px color-mix(in srgb, var(--surface) 58%, transparent),
+      inset 0 -2px 0 color-mix(in srgb, var(--mount-color) 10%, transparent);
+  }
+
+  .mount-crosshair {
+    width: calc(100% - 9px);
+    height: calc(100% - 9px);
+    border-width: 1.5px;
+  }
+
+  .mounted-balloon-drag-source,
+  .balloon-mark--compact {
+    width: clamp(34px, 11vw, 45px);
+    height: clamp(34px, 11vw, 45px);
+  }
+
+  .balloon-mark--compact::before {
+    border-width: 2.5px;
+    box-shadow:
+      0 0 0 2px rgba(255, 255, 255, 0.96),
+      0 3px 7px rgba(35, 43, 38, 0.2);
   }
 
   .moment-axis__arrow {

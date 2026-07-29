@@ -5,7 +5,8 @@ on:
     branches:
       - main
   schedule:
-    - cron: "7 0 * * *"
+    - cron: "23,53 0 * * *"
+    - cron: "23 1 * * *"
   workflow_dispatch:
 
 permissions:
@@ -18,7 +19,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  freshness:
+    name: Check daily challenge freshness
+    runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.check.outputs.deploy }}
+    steps:
+      - name: Check deployed date
+        id: check
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [[ "$EVENT_NAME" != "schedule" ]]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          current_date="$(date -u +%F)"
+          repository_name="${GITHUB_REPOSITORY#*/}"
+          endpoint="https://${GITHUB_REPOSITORY_OWNER}.github.io/${repository_name}/daily.json?freshness=${GITHUB_RUN_ID}"
+          deployed_date="$(curl --fail --silent --show-error "$endpoint" | jq --raw-output '.date // empty' || true)"
+
+          if [[ "$deployed_date" == "$current_date" ]]; then
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            echo "Daily challenge is already current: $current_date"
+          else
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+            echo "Daily challenge needs refresh: ${deployed_date:-missing} -> $current_date"
+          fi
+
   deploy:
+    needs: freshness
+    if: needs.freshness.outputs.deploy == 'true'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

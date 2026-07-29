@@ -49,6 +49,13 @@ type DailyChallenge = {
   difficulty: "normal";
 };
 
+function utcDateKey(date = new Date()) {
+  const year = String(date.getUTCFullYear()).padStart(4, "0");
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 async function fetchDailyChallenge() {
   const configuredEndpoint =
     typeof document === "undefined"
@@ -58,17 +65,24 @@ async function fetchDailyChallenge() {
             'meta[name="moment-zero-daily-endpoint"]',
           )
           ?.getAttribute("content");
-  const response = await fetch(configuredEndpoint || "/api/daily", {
+  const dateKey = utcDateKey();
+  const endpoint = new URL(
+    configuredEndpoint || "/api/daily",
+    window.location.href,
+  );
+  endpoint.searchParams.set("date", dateKey);
+  const response = await fetch(endpoint, {
     cache: "no-store",
   });
   if (!response.ok) throw new Error("每日题暂时不可用");
   const data = (await response.json()) as Partial<DailyChallenge>;
   if (
     !data.date?.match(/^\d{4}-\d{2}-\d{2}$/) ||
+    data.date !== dateKey ||
     !data.seed?.match(/^MZ-[A-Z0-9]{8}$/) ||
     data.difficulty !== "normal"
   ) {
-    throw new Error("每日题数据无效");
+    throw new Error("每日题尚未更新");
   }
   return data as DailyChallenge;
 }
@@ -834,7 +848,7 @@ export default function Home() {
                     return (
                       <div
                         key={mount.id}
-                        className={`board-cell board-cell--mount${level ? " has-balloon" : ""}${isHinted ? " is-hinted" : ""}${draggingMountId === mount.id ? " is-dragging" : ""}${dragOverMountId === mount.id && draggingMountId !== mount.id ? " is-drop-target" : ""}`}
+                        className={`board-cell board-cell--mount${level ? " has-balloon" : " is-empty"}${isHinted ? " is-hinted" : ""}${draggingMountId === mount.id ? " is-dragging" : ""}${dragOverMountId === mount.id && draggingMountId !== mount.id ? " is-drop-target" : ""}`}
                         role="gridcell"
                         tabIndex={0}
                         data-mount-id={mount.id}

@@ -39,3 +39,21 @@ test("derives opaque deterministic daily seeds from a secret", () => {
     deriveDailySeed(secret, "2026-07-29"),
   );
 });
+
+test("retries scheduled daily deployments and skips a fresh challenge", async () => {
+  const workflow = await readFile(
+    new URL("../.github/workflows/deploy-pages.yml", import.meta.url),
+    "utf8",
+  );
+  const page = await readFile(
+    new URL("../app/page.tsx", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(workflow, /cron: "23,53 0 \* \* \*"/);
+  assert.match(workflow, /cron: "23 1 \* \* \*"/);
+  assert.match(workflow, /Check daily challenge freshness/);
+  assert.match(workflow, /needs\.freshness\.outputs\.deploy == 'true'/);
+  assert.match(page, /endpoint\.searchParams\.set\("date", dateKey\)/);
+  assert.match(page, /data\.date !== dateKey/);
+});

@@ -99,6 +99,15 @@ test("ships the solver and removes starter-only assets", async () => {
   assert.match(page, /cache: "no-store"/);
   assert.match(page, /每日一题/);
   assert.match(page, /loadDailyPuzzle/);
+  assert.match(
+    page,
+    /gameMode === "campaign" \? "随机模式" : "闯关模式"/,
+  );
+  assert.match(page, /className="campaign-map-button"/);
+  assert.doesNotMatch(
+    page,
+    /gameMode === "campaign" \? "关卡地图" : "闯关模式"/,
+  );
   assert.match(dailyRoute, /DAILY_SEED_SECRET/);
   assert.match(dailyRoute, /HMAC/);
   assert.doesNotMatch(dailyRoute, /searchParams/);

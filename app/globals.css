@@ -209,15 +209,10 @@ button:focus-visible {
   color: #49504c;
 }
 
-.button--campaign:hover,
-.button--campaign.is-active {
+.button--campaign:hover {
   border-color: var(--ink);
   background: var(--ink);
   color: white;
-}
-
-.button--campaign.is-active {
-  box-shadow: inset 0 -2px var(--accent);
 }
 
 .button--campaign:disabled,

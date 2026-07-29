@@ -1023,15 +1023,16 @@ export default function Home() {
             分享题目
           </button>
           <button
-            className={`button button--campaign${gameMode === "campaign" ? " is-active" : ""}`}
+            className="button button--campaign"
             type="button"
-            aria-pressed={gameMode === "campaign"}
             disabled={generating}
             onClick={() =>
-              gameMode === "campaign" ? setShowCampaign(true) : enterCampaign()
+              gameMode === "campaign"
+                ? loadPuzzle(createRandomSeed(), difficulty, { mode: "free" })
+                : enterCampaign()
             }
           >
-            {gameMode === "campaign" ? "关卡地图" : "闯关模式"}
+            {gameMode === "campaign" ? "随机模式" : "闯关模式"}
           </button>
           <button
             className={`button button--daily${isDailyChallenge ? " is-active" : ""}`}

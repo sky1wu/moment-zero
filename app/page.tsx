@@ -23,8 +23,23 @@ import {
   type Puzzle,
   type SlotLevel,
 } from "./game-core";
+import {
+  CAMPAIGN_CHAPTERS,
+  CAMPAIGN_LEVELS,
+  CAMPAIGN_PATTERN_LABELS,
+  CAMPAIGN_STORAGE_KEY,
+  CAMPAIGN_TOTAL,
+  CAMPAIGN_VERSION,
+  getCampaignChapter,
+  getCampaignLevel,
+  getCampaignUnlockedThrough,
+  parseCampaignProgress,
+  type CampaignProgress,
+  type CampaignSnapshot,
+} from "./campaign";
 
 type AssignmentMap = Record<string, SlotLevel>;
+type GameMode = "free" | "daily" | "campaign";
 type PointerDrag = {
   level: BalloonLevel;
   sourceMountId: string | null;
@@ -51,6 +66,12 @@ type DailyChallenge = {
   date: string;
   seed: string;
   difficulty: "normal";
+};
+
+type PuzzleLoadOptions = {
+  mode?: GameMode;
+  campaignLevel?: number;
+  snapshot?: CampaignSnapshot | null;
 };
 
 const POINTER_DRAG_THRESHOLD = 6;
@@ -99,6 +120,24 @@ function formatTime(totalSeconds: number) {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+function restoreCampaignAssignments(
+  puzzle: Puzzle,
+  snapshot: CampaignSnapshot | null | undefined,
+) {
+  if (!snapshot) return {};
+  const mountIds = new Set(puzzle.mounts.map((mount) => mount.id));
+  const used: Record<BalloonLevel, number> = { 1: 0, 2: 0, 3: 0, 4: 0 };
+  const restored: AssignmentMap = {};
+
+  for (const [mountId, level] of Object.entries(snapshot.assignments)) {
+    if (!mountIds.has(mountId) || level === 0) continue;
+    if (!LEVELS.includes(level) || used[level] >= puzzle.counts[level]) continue;
+    restored[mountId] = level;
+    used[level] += 1;
+  }
+  return restored;
+}
+
 function BalloonMark({
   level,
   compact = false,
@@ -117,6 +156,7 @@ function BalloonMark({
 }
 
 export default function Home() {
+  const [gameMode, setGameMode] = useState<GameMode>("free");
   const [difficulty, setDifficulty] = useState<Difficulty>("normal");
   const [seedDraft, setSeedDraft] = useState("MZ-START");
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null);
@@ -141,6 +181,9 @@ export default function Home() {
   const [dailyLoading, setDailyLoading] = useState(false);
   const [streak, setStreak] = useState(0);
   const [bestTime, setBestTime] = useState<number | null>(null);
+  const [campaignLevel, setCampaignLevel] = useState(1);
+  const [campaignCompleted, setCampaignCompleted] = useState<number[]>([]);
+  const [showCampaign, setShowCampaign] = useState(false);
   const startedAt = useRef(Date.now());
   const completionHandled = useRef(false);
   const generationToken = useRef(0);
@@ -173,7 +216,11 @@ export default function Home() {
   }, []);
 
   const loadPuzzle = useCallback(
-    (nextSeed: string, nextDifficulty: Difficulty) => {
+    (
+      nextSeed: string,
+      nextDifficulty: Difficulty,
+      options: PuzzleLoadOptions = {},
+    ) => {
       const token = generationToken.current + 1;
       generationToken.current = token;
       setGenerating(true);
@@ -187,20 +234,37 @@ export default function Home() {
           const normalizedSeed = formatSeed(nextSeed.replace(/^MZ-/i, ""));
           const nextPuzzle = generatePuzzle(normalizedSeed, nextDifficulty);
           if (generationToken.current !== token) return;
+          const snapshot =
+            options.mode === "campaign" ? options.snapshot : null;
+          const restoredAssignments = restoreCampaignAssignments(
+            nextPuzzle,
+            snapshot,
+          );
           setSeedDraft(normalizedSeed);
           setDifficulty(nextDifficulty);
           setPuzzle(nextPuzzle);
-          setAssignments({});
+          setGameMode(options.mode ?? "free");
+          if (options.mode === "campaign" && options.campaignLevel) {
+            setCampaignLevel(options.campaignLevel);
+          }
+          setAssignments(restoredAssignments);
           setHistory([]);
-          setMoves(0);
-          setHints(0);
-          setElapsed(0);
+          setMoves(snapshot?.moves ?? 0);
+          setHints(snapshot?.hints ?? 0);
+          setElapsed(snapshot?.elapsed ?? 0);
           setSelectedLevel(LEVELS.find((level) => nextPuzzle.counts[level] > 0) ?? 1);
-          startedAt.current = Date.now();
-          const params = new URLSearchParams({
-            seed: normalizedSeed,
-            difficulty: nextDifficulty,
-          });
+          startedAt.current = Date.now() - (snapshot?.elapsed ?? 0) * 1000;
+          const params =
+            options.mode === "campaign" && options.campaignLevel
+              ? new URLSearchParams({
+                  mode: "campaign",
+                  level: String(options.campaignLevel),
+                })
+              : new URLSearchParams({
+                  seed: normalizedSeed,
+                  difficulty: nextDifficulty,
+                  ...(options.mode === "daily" ? { mode: "daily" } : {}),
+                });
           window.history.replaceState(null, "", `?${params.toString()}`);
           const storedBest = window.localStorage.getItem(
             `moment-zero-best:${nextDifficulty}`,
@@ -223,6 +287,7 @@ export default function Home() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const requestedMode = params.get("mode");
     const requestedDifficulty = params.get("difficulty");
     const initialDifficulty: Difficulty =
       requestedDifficulty === "easy" ||
@@ -230,22 +295,59 @@ export default function Home() {
       requestedDifficulty === "hard"
         ? requestedDifficulty
         : "normal";
-    const initialSeed = params.get("seed") || createRandomSeed();
+    const campaignProgress = parseCampaignProgress(
+      window.localStorage.getItem(CAMPAIGN_STORAGE_KEY),
+    );
+    const requestedCampaignLevel = Number(params.get("level"));
+    const unlockedThrough = getCampaignUnlockedThrough(
+      campaignProgress.completed,
+    );
+    const initialCampaignLevel =
+      Number.isInteger(requestedCampaignLevel) &&
+      requestedCampaignLevel >= 1 &&
+      requestedCampaignLevel <= unlockedThrough
+        ? requestedCampaignLevel
+        : campaignProgress.currentLevel;
     const storedStreak = Number(
       window.localStorage.getItem("moment-zero-streak") || 0,
     );
     window.queueMicrotask(() => {
       setStreak(storedStreak);
-      loadPuzzle(initialSeed, initialDifficulty);
+      setCampaignCompleted(campaignProgress.completed);
+      setCampaignLevel(campaignProgress.currentLevel);
+      if (requestedMode === "campaign") {
+        const level = getCampaignLevel(initialCampaignLevel);
+        loadPuzzle(level.seed, level.difficulty, {
+          mode: "campaign",
+          campaignLevel: level.number,
+          snapshot:
+            campaignProgress.inProgress?.level === level.number
+              ? campaignProgress.inProgress
+              : null,
+        });
+        return;
+      }
+      const initialSeed = params.get("seed") || createRandomSeed();
+      loadPuzzle(initialSeed, initialDifficulty, {
+        mode: requestedMode === "daily" ? "daily" : "free",
+      });
     });
   }, [loadPuzzle]);
 
   const total = puzzle ? totalBalloons(puzzle.counts) : 0;
   const isDailyChallenge = Boolean(
-    puzzle &&
+    gameMode !== "campaign" &&
+      puzzle &&
       dailyChallenge &&
       puzzle.seed === dailyChallenge.seed &&
       puzzle.difficulty === "normal",
+  );
+  const activeCampaignLevel = getCampaignLevel(campaignLevel);
+  const activeCampaignChapter = getCampaignChapter(campaignLevel);
+  const campaignUnlockedThrough =
+    getCampaignUnlockedThrough(campaignCompleted);
+  const campaignCompletionPercent = Math.round(
+    (campaignCompleted.length / CAMPAIGN_TOTAL) * 100,
   );
   const hasCenterMount = Boolean(
     puzzle?.mounts.some((mount) => {
@@ -327,13 +429,81 @@ export default function Home() {
     if (shouldUpdateBest) {
       window.localStorage.setItem(bestKey, String(elapsed));
     }
+    let nextCampaignCompleted = campaignCompleted;
+    if (gameMode === "campaign") {
+      nextCampaignCompleted = Array.from(
+        new Set([...campaignCompleted, campaignLevel]),
+      ).sort((left, right) => left - right);
+      const nextLevel = Math.min(CAMPAIGN_TOTAL, campaignLevel + 1);
+      window.localStorage.setItem(
+        CAMPAIGN_STORAGE_KEY,
+        JSON.stringify({
+          version: CAMPAIGN_VERSION,
+          currentLevel: nextLevel,
+          completed: nextCampaignCompleted,
+          inProgress: null,
+        } satisfies CampaignProgress),
+      );
+    }
     const successTimer = window.setTimeout(() => {
       if (shouldUpdateStreak) setStreak(nextStreak);
       if (shouldUpdateBest) setBestTime(elapsed);
+      if (gameMode === "campaign") {
+        setCampaignCompleted(nextCampaignCompleted);
+      }
       setShowSuccess(true);
     }, 520);
     return () => window.clearTimeout(successTimer);
-  }, [elapsed, puzzle, solved, streak]);
+  }, [
+    campaignCompleted,
+    campaignLevel,
+    elapsed,
+    gameMode,
+    puzzle,
+    solved,
+    streak,
+  ]);
+
+  useEffect(() => {
+    if (
+      gameMode !== "campaign" ||
+      generating ||
+      solved ||
+      !puzzle ||
+      puzzle.seed !== activeCampaignLevel.seed ||
+      puzzle.difficulty !== activeCampaignLevel.difficulty
+    ) {
+      return;
+    }
+    window.localStorage.setItem(
+      CAMPAIGN_STORAGE_KEY,
+      JSON.stringify({
+        version: CAMPAIGN_VERSION,
+        currentLevel: campaignLevel,
+        completed: campaignCompleted,
+        inProgress: {
+          level: campaignLevel,
+          assignments,
+          moves,
+          hints,
+          elapsed,
+        },
+      } satisfies CampaignProgress),
+    );
+  }, [
+    activeCampaignLevel.difficulty,
+    activeCampaignLevel.seed,
+    assignments,
+    campaignCompleted,
+    campaignLevel,
+    elapsed,
+    gameMode,
+    generating,
+    hints,
+    moves,
+    puzzle,
+    solved,
+  ]);
 
   useEffect(() => {
     if (!toast) return;
@@ -343,6 +513,10 @@ export default function Home() {
 
   useEffect(() => {
     function handleKeydown(event: KeyboardEvent) {
+      if (event.key === "Escape" && showCampaign) {
+        setShowCampaign(false);
+        return;
+      }
       if (event.key === "Escape" && showSuccess) {
         setShowSuccess(false);
         return;
@@ -381,13 +555,65 @@ export default function Home() {
     }, 0);
   }
 
+  function loadCampaignLevel(
+    requestedLevel: number,
+    providedProgress?: CampaignProgress,
+  ) {
+    const storedProgress =
+      providedProgress ??
+      parseCampaignProgress(
+        window.localStorage.getItem(CAMPAIGN_STORAGE_KEY),
+      );
+    const completed = providedProgress
+      ? providedProgress.completed
+      : campaignCompleted;
+    const unlockedThrough = getCampaignUnlockedThrough(completed);
+    if (
+      !Number.isInteger(requestedLevel) ||
+      requestedLevel < 1 ||
+      requestedLevel > unlockedThrough
+    ) {
+      flash(`完成第 ${String(unlockedThrough).padStart(2, "0")} 关后解锁`);
+      return;
+    }
+
+    const level = getCampaignLevel(requestedLevel);
+    const snapshot =
+      storedProgress.inProgress?.level === level.number
+        ? storedProgress.inProgress
+        : null;
+    setCampaignCompleted(completed);
+    setShowCampaign(false);
+    window.localStorage.setItem(
+      CAMPAIGN_STORAGE_KEY,
+      JSON.stringify({
+        version: CAMPAIGN_VERSION,
+        currentLevel: level.number,
+        completed,
+        inProgress: snapshot,
+      } satisfies CampaignProgress),
+    );
+    loadPuzzle(level.seed, level.difficulty, {
+      mode: "campaign",
+      campaignLevel: level.number,
+      snapshot,
+    });
+  }
+
+  function enterCampaign() {
+    const progress = parseCampaignProgress(
+      window.localStorage.getItem(CAMPAIGN_STORAGE_KEY),
+    );
+    loadCampaignLevel(progress.currentLevel, progress);
+  }
+
   async function loadDailyPuzzle() {
     if (dailyLoading) return;
     setDailyLoading(true);
     try {
       const challenge = await fetchDailyChallenge();
       setDailyChallenge(challenge);
-      loadPuzzle(challenge.seed, challenge.difficulty);
+      loadPuzzle(challenge.seed, challenge.difficulty, { mode: "daily" });
     } catch {
       flash("每日题暂时不可用，请稍后重试");
     } finally {
@@ -685,9 +911,15 @@ export default function Home() {
   }
 
   async function sharePuzzle() {
-    const url = window.location.href;
+    const url = new URL(window.location.href);
+    if (gameMode === "campaign" && puzzle) {
+      url.search = new URLSearchParams({
+        seed: puzzle.seed,
+        difficulty: puzzle.difficulty,
+      }).toString();
+    }
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(url.toString());
       flash("题目链接已复制");
     } catch {
       flash("复制失败，请从地址栏复制链接");
@@ -771,12 +1003,35 @@ export default function Home() {
           </div>
         </div>
         <div className="topbar__mission">
-          <span>{isDailyChallenge ? "全球每日挑战" : "浮空回收训练"}</span>
-          <strong>{isDailyChallenge ? "每日一题" : DIFFICULTY_LABELS[difficulty]}</strong>
+          <span>
+            {gameMode === "campaign"
+              ? "百关回收协议"
+              : isDailyChallenge
+                ? "全球每日挑战"
+                : "浮空回收训练"}
+          </span>
+          <strong>
+            {gameMode === "campaign"
+              ? `第 ${String(campaignLevel).padStart(2, "0")} 关`
+              : isDailyChallenge
+                ? "每日一题"
+                : DIFFICULTY_LABELS[difficulty]}
+          </strong>
         </div>
         <div className="topbar__actions">
           <button className="button button--quiet" type="button" onClick={sharePuzzle}>
             分享题目
+          </button>
+          <button
+            className={`button button--campaign${gameMode === "campaign" ? " is-active" : ""}`}
+            type="button"
+            aria-pressed={gameMode === "campaign"}
+            disabled={generating}
+            onClick={() =>
+              gameMode === "campaign" ? setShowCampaign(true) : enterCampaign()
+            }
+          >
+            {gameMode === "campaign" ? "关卡地图" : "闯关模式"}
           </button>
           <button
             className={`button button--daily${isDailyChallenge ? " is-active" : ""}`}
@@ -788,14 +1043,18 @@ export default function Home() {
           >
             {dailyLoading ? "正在获取…" : "每日一题"}
           </button>
-          <button
-            className="button button--primary"
-            type="button"
-            onClick={() => loadPuzzle(createRandomSeed(), difficulty)}
-          >
-            新任务
-            <span aria-hidden="true">↗</span>
-          </button>
+          {gameMode !== "campaign" && (
+            <button
+              className="button button--primary button--new-task"
+              type="button"
+              onClick={() =>
+                loadPuzzle(createRandomSeed(), difficulty, { mode: "free" })
+              }
+            >
+              新任务
+              <span aria-hidden="true">↗</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -803,65 +1062,105 @@ export default function Home() {
         <aside className="mission-rail" aria-label="任务信息">
           <div className="rail-heading">
             <span className="eyebrow">
-              {isDailyChallenge ? "每日一题" : "当前任务"}
+              {gameMode === "campaign"
+                ? `百关协议 · ${activeCampaignChapter.range}`
+                : isDailyChallenge
+                  ? "每日一题"
+                  : "当前任务"}
             </span>
-            <h1>平衡全部气球</h1>
+            <h1>
+              {gameMode === "campaign"
+                ? activeCampaignChapter.title
+                : "平衡全部气球"}
+            </h1>
           </div>
 
-          <div className="mission-setting">
-            <form
-              className="seed-block"
-              onSubmit={(event) => {
-                event.preventDefault();
-                loadPuzzle(seedDraft, difficulty);
-              }}
-            >
-              <label htmlFor="puzzle-seed">种子</label>
-              <div>
-                <input
-                  id="puzzle-seed"
-                  name="seed"
-                  type="text"
-                  value={seedDraft}
-                  maxLength={11}
-                  autoComplete="off"
-                  spellCheck={false}
-                  aria-label="输入题目种子"
-                  onChange={(event) => setSeedDraft(event.target.value)}
-                />
-                <button
-                  type="button"
-                  className="seed-block__copy"
-                  aria-label="复制题目种子"
-                  disabled={!seedDraft.trim()}
-                  onClick={copySeed}
-                >
-                  复制
-                </button>
-                <button
-                  type="submit"
-                  className="seed-block__load"
-                  disabled={generating}
-                >
-                  载入
-                </button>
+          {gameMode === "campaign" ? (
+            <div className="mission-setting mission-setting--campaign">
+              <div className="campaign-status__identity">
+                <span>
+                  LEVEL {String(campaignLevel).padStart(3, "0")} / {CAMPAIGN_TOTAL}
+                </span>
+                <strong>
+                  {CAMPAIGN_PATTERN_LABELS[activeCampaignLevel.pattern]}构型 ·{" "}
+                  {DIFFICULTY_LABELS[activeCampaignLevel.difficulty]}
+                </strong>
               </div>
-            </form>
-
-            <div className="difficulty-control" aria-label="难度">
-              {(["easy", "normal", "hard"] as Difficulty[]).map((item) => (
-                <button
-                  key={item}
-                  type="button"
-                  className={difficulty === item ? "is-active" : ""}
-                  onClick={() => loadPuzzle(createRandomSeed(), item)}
-                  aria-pressed={difficulty === item}
-                >
-                  {DIFFICULTY_LABELS[item]}
-                </button>
-              ))}
+              <div className="campaign-status__progress">
+                <div>
+                  <span>总进度</span>
+                  <strong>{campaignCompletionPercent}%</strong>
+                </div>
+                <i aria-hidden="true">
+                  <span style={{ width: `${campaignCompletionPercent}%` }} />
+                </i>
+              </div>
+              <button
+                className="campaign-map-button"
+                type="button"
+                onClick={() => setShowCampaign(true)}
+              >
+                查看航线 <span aria-hidden="true">⌁</span>
+              </button>
             </div>
-          </div>
+          ) : (
+            <div className="mission-setting">
+              <form
+                className="seed-block"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  loadPuzzle(seedDraft, difficulty, { mode: "free" });
+                }}
+              >
+                <label htmlFor="puzzle-seed">种子</label>
+                <div>
+                  <input
+                    id="puzzle-seed"
+                    name="seed"
+                    type="text"
+                    value={seedDraft}
+                    maxLength={11}
+                    autoComplete="off"
+                    spellCheck={false}
+                    aria-label="输入题目种子"
+                    onChange={(event) => setSeedDraft(event.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="seed-block__copy"
+                    aria-label="复制题目种子"
+                    disabled={!seedDraft.trim()}
+                    onClick={copySeed}
+                  >
+                    复制
+                  </button>
+                  <button
+                    type="submit"
+                    className="seed-block__load"
+                    disabled={generating}
+                  >
+                    载入
+                  </button>
+                </div>
+              </form>
+
+              <div className="difficulty-control" aria-label="难度">
+                {(["easy", "normal", "hard"] as Difficulty[]).map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    className={difficulty === item ? "is-active" : ""}
+                    onClick={() =>
+                      loadPuzzle(createRandomSeed(), item, { mode: "free" })
+                    }
+                    aria-pressed={difficulty === item}
+                  >
+                    {DIFFICULTY_LABELS[item]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           <dl className="mission-metrics">
             <div>
@@ -873,12 +1172,22 @@ export default function Home() {
               <dd>{String(moves).padStart(2, "0")}</dd>
             </div>
             <div>
-              <dt>连胜</dt>
-              <dd>{String(streak).padStart(2, "0")}</dd>
+              <dt>{gameMode === "campaign" ? "进度" : "连胜"}</dt>
+              <dd>
+                {gameMode === "campaign"
+                  ? `${String(campaignCompleted.length).padStart(2, "0")}/100`
+                  : String(streak).padStart(2, "0")}
+              </dd>
             </div>
             <div>
-              <dt>最佳</dt>
-              <dd>{bestTime === null ? "--:--" : formatTime(bestTime)}</dd>
+              <dt>{gameMode === "campaign" ? "航段" : "最佳"}</dt>
+              <dd>
+                {gameMode === "campaign"
+                  ? `${String(activeCampaignChapter.number).padStart(2, "0")}/10`
+                  : bestTime === null
+                    ? "--:--"
+                    : formatTime(bestTime)}
+              </dd>
             </div>
           </dl>
 
@@ -895,7 +1204,11 @@ export default function Home() {
           <div className="stage-heading">
             <div>
               <span className="eyebrow">平台</span>
-              <h2 id="board-title">回收平台</h2>
+              <h2 id="board-title">
+                回收平台
+                {gameMode === "campaign" &&
+                  ` · ${String(campaignLevel).padStart(3, "0")}`}
+              </h2>
             </div>
           </div>
 
@@ -1129,7 +1442,11 @@ export default function Home() {
           <span>{error}</span>
           <button
             type="button"
-            onClick={() => loadPuzzle(createRandomSeed(), difficulty)}
+            onClick={() =>
+              gameMode === "campaign"
+                ? loadCampaignLevel(campaignLevel)
+                : loadPuzzle(createRandomSeed(), difficulty, { mode: "free" })
+            }
           >
             重新生成
           </button>
@@ -1187,6 +1504,123 @@ export default function Home() {
         </div>
       )}
 
+      {showCampaign && (
+        <div
+          className="modal-backdrop campaign-backdrop"
+          role="presentation"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setShowCampaign(false);
+          }}
+        >
+          <section
+            className="campaign-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="campaign-title"
+          >
+            <button
+              className="modal-close"
+              type="button"
+              onClick={() => setShowCampaign(false)}
+              aria-label="关闭"
+            >
+              ×
+            </button>
+            <header className="campaign-modal__header">
+              <div>
+                <span className="eyebrow">CAMPAIGN 01 / 百关回收协议</span>
+                <h2 id="campaign-title">百关航线</h2>
+                <p>
+                  固定关卡序列由易至难，每十关穿插一组异形挂载点。
+                </p>
+              </div>
+              <div className="campaign-modal__summary">
+                <strong>
+                  {String(campaignCompleted.length).padStart(3, "0")}
+                  <span> / {CAMPAIGN_TOTAL}</span>
+                </strong>
+                <small>已稳定</small>
+              </div>
+            </header>
+
+            <div className="campaign-modal__track" aria-label="闯关总进度">
+              <span style={{ width: `${campaignCompletionPercent}%` }} />
+            </div>
+
+            <div className="campaign-chapters">
+              {CAMPAIGN_CHAPTERS.map((chapter) => {
+                const levels = CAMPAIGN_LEVELS.filter(
+                  (level) => level.chapter === chapter.number,
+                );
+                return (
+                  <section className="campaign-chapter" key={chapter.number}>
+                    <header>
+                      <span>
+                        航段 {String(chapter.number).padStart(2, "0")}
+                      </span>
+                      <strong>{chapter.title}</strong>
+                      <small>{chapter.range}</small>
+                    </header>
+                    <div className="campaign-levels">
+                      {levels.map((level) => {
+                        const completed = campaignCompleted.includes(
+                          level.number,
+                        );
+                        const unlocked =
+                          level.number <= campaignUnlockedThrough;
+                        const active =
+                          gameMode === "campaign" &&
+                          campaignLevel === level.number;
+                        return (
+                          <button
+                            className={`${completed ? "is-completed" : ""}${active ? " is-active" : ""}`}
+                            type="button"
+                            key={level.number}
+                            disabled={!unlocked || generating}
+                            aria-label={`第 ${level.number} 关，${CAMPAIGN_PATTERN_LABELS[level.pattern]}构型，${completed ? "已完成" : unlocked ? "已解锁" : "未解锁"}`}
+                            aria-current={active ? "step" : undefined}
+                            onClick={() => loadCampaignLevel(level.number)}
+                          >
+                            <span>{String(level.number).padStart(2, "0")}</span>
+                            <small>
+                              {completed
+                                ? "完成"
+                                : unlocked
+                                  ? CAMPAIGN_PATTERN_LABELS[level.pattern]
+                                  : "锁定"}
+                            </small>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+
+            <footer className="campaign-modal__footer">
+              <span>
+                进度仅保存在当前浏览器
+                <i aria-hidden="true" />
+                {campaignCompletionPercent}% 已完成
+              </span>
+              <button
+                className="button button--primary"
+                type="button"
+                onClick={() =>
+                  loadCampaignLevel(campaignUnlockedThrough)
+                }
+              >
+                {campaignCompleted.length === CAMPAIGN_TOTAL
+                  ? "重玩最终关"
+                  : `继续第 ${String(campaignUnlockedThrough).padStart(2, "0")} 关`}
+                <span aria-hidden="true">→</span>
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
+
       {showSuccess && puzzle && (
         <div
           className="modal-backdrop modal-backdrop--success"
@@ -1205,9 +1639,25 @@ export default function Home() {
               <span />
               <i />
             </div>
-            <span className="eyebrow">回收轨迹稳定</span>
-            <h2 id="success-title">平衡锁定</h2>
-            <p>横向与纵向力矩均已归零。当前浮空配置可以执行回收。</p>
+            <span className="eyebrow">
+              {gameMode === "campaign"
+                ? `百关协议 · LEVEL ${String(campaignLevel).padStart(3, "0")}`
+                : "回收轨迹稳定"}
+            </span>
+            <h2 id="success-title">
+              {gameMode === "campaign" && campaignLevel === CAMPAIGN_TOTAL
+                ? "百关完成"
+                : gameMode === "campaign"
+                  ? `第 ${String(campaignLevel).padStart(2, "0")} 关稳定`
+                  : "平衡锁定"}
+            </h2>
+            <p>
+              {gameMode === "campaign"
+                ? campaignLevel === CAMPAIGN_TOTAL
+                  ? "全部回收轨迹均已稳定。百关协议执行完毕。"
+                  : "本关横向与纵向力矩均已归零，下一关现已解锁。"
+                : "横向与纵向力矩均已归零。当前浮空配置可以执行回收。"}
+            </p>
             <dl>
               <div>
                 <dt>完成用时</dt>
@@ -1222,8 +1672,12 @@ export default function Home() {
                 <dd>{hints}</dd>
               </div>
               <div>
-                <dt>连续完成</dt>
-                <dd>{streak}</dd>
+                <dt>{gameMode === "campaign" ? "闯关进度" : "连续完成"}</dt>
+                <dd>
+                  {gameMode === "campaign"
+                    ? `${campaignCompleted.length}/100`
+                    : streak}
+                </dd>
               </div>
             </dl>
             <div className="success-actions">
@@ -1253,9 +1707,25 @@ export default function Home() {
               <button
                 className="button button--primary"
                 type="button"
-                onClick={() => loadPuzzle(createRandomSeed(), difficulty)}
+                onClick={() => {
+                  setShowSuccess(false);
+                  if (gameMode === "campaign") {
+                    if (campaignLevel === CAMPAIGN_TOTAL) {
+                      setShowCampaign(true);
+                    } else {
+                      loadCampaignLevel(campaignLevel + 1);
+                    }
+                    return;
+                  }
+                  loadPuzzle(createRandomSeed(), difficulty, { mode: "free" });
+                }}
               >
-                下一任务 <span aria-hidden="true">→</span>
+                {gameMode === "campaign"
+                  ? campaignLevel === CAMPAIGN_TOTAL
+                    ? "查看航线"
+                    : "下一关"
+                  : "下一任务"}{" "}
+                <span aria-hidden="true">→</span>
               </button>
             </div>
           </section>

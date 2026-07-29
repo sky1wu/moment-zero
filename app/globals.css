@@ -542,9 +542,13 @@ button:focus-visible {
   --mount-border: #91b9ae;
   --mount-surface: #edf7f3;
   --mount-hover: #f7fcfa;
+  padding: 0;
   border-color: var(--mount-border);
+  appearance: none;
   background: var(--mount-surface);
+  color: inherit;
   cursor: pointer;
+  font: inherit;
   transition:
     border-color 150ms ease,
     background 150ms ease,
@@ -663,6 +667,7 @@ button:focus-visible {
   border: 1.5px dashed var(--mount-color);
   border-radius: 5px;
   opacity: 0.72;
+  pointer-events: none;
   transform: translate(-50%, -50%);
   transition:
     opacity 150ms ease,
@@ -714,6 +719,7 @@ button:focus-visible {
   font-weight: 750;
   letter-spacing: -0.04em;
   line-height: 1;
+  pointer-events: none;
 }
 
 .hint-label {

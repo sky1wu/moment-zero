@@ -110,9 +110,21 @@ test("ships the solver and removes starter-only assets", async () => {
   assert.doesNotMatch(page, /status-chip|platform-summary|statusText/);
   assert.doesNotMatch(styles, /\.status-chip|\.platform-summary/);
   assert.match(page, /data-multiplier=\{mount\.multiplier\}/);
+  assert.match(
+    page,
+    /<button\s+type="button"\s+key=\{mount\.id\}[\s\S]*?role="gridcell"/,
+  );
   assert.match(page, /data-balloon-level=\{level\}/);
   assert.match(styles, /\.board-cell--mount\[data-multiplier="2"\]/);
   assert.match(styles, /\.board-cell--mount\[data-multiplier="3"\]/);
+  assert.match(
+    styles,
+    /\.mount-crosshair\s*\{[\s\S]*?pointer-events:\s*none;/,
+  );
+  assert.match(
+    styles,
+    /\.mount-multiplier\s*\{[\s\S]*?pointer-events:\s*none;/,
+  );
   assert.match(styles, /\.balloon-mark--2\s*\{[\s\S]*?--balloon-color:/);
   assert.match(styles, /\.balloon-mark--3\s*\{[\s\S]*?--balloon-color:/);
   assert.match(styles, /\.balloon-mark--4\s*\{[\s\S]*?--balloon-color:/);
@@ -123,7 +135,29 @@ test("ships the solver and removes starter-only assets", async () => {
   assert.doesNotMatch(page, /<p>\s*X \{moment\.x/);
   assert.match(page, /inventory-drag-source/);
   assert.match(page, /mounted-balloon-drag-source/);
+  assert.doesNotMatch(
+    page,
+    /<button[\s\S]{0,160}className="mounted-balloon-drag-source"/,
+  );
   assert.match(page, /beginPointerDrag/);
+  assert.match(page, /const POINTER_DRAG_THRESHOLD = 6/);
+  assert.match(page, /function crossedDragThreshold/);
+  assert.match(page, /pointerDragRef\.current = nextDrag/);
+  assert.match(page, /function suppressNextMountClick/);
+  assert.match(page, /tapMountId: string \| null/);
+  assert.match(
+    page,
+    /beginPointerDrag\(event, selectedLevel, null, sourceMountId\)/,
+  );
+  assert.match(
+    page,
+    /if \(nextDrag\.hasMoved \|\| nextDrag\.tapMountId === null\)/,
+  );
+  assert.match(page, /const nextRemaining = \{ \.\.\.remaining \}/);
+  assert.match(
+    page,
+    /LEVELS\.find\(\(level\) => nextRemaining\[level\] > 0\) \?\? null/,
+  );
   assert.match(
     page,
     /sourceMountId === null && remaining\[level\] <= 0/,
@@ -155,6 +189,22 @@ test("ships the solver and removes starter-only assets", async () => {
     /if \(pointerDragRef\.current && event\.cancelable\) event\.preventDefault\(\)/,
   );
   assert.match(page, /elementsFromPoint/);
+  assert.match(
+    page,
+    /targetMountId === active\.sourceMountId &&\s*!hasMoved[\s\S]*?placeBalloon\(targetMountId, selectedLevel\)/,
+  );
+  assert.match(
+    page,
+    /targetMountId === active\.tapMountId &&\s*!hasMoved[\s\S]*?placeBalloon\(targetMountId, active\.level\)/,
+  );
+  assert.match(
+    page,
+    /onPointerUp=\{\(event\) => \{\s*if \(pointerDragRef\.current\) return;[\s\S]*?suppressNextMountClick\(mount\.id\);[\s\S]*?placeBalloon\(mount\.id, selectedLevel\)/,
+  );
+  assert.match(
+    page,
+    /onClick=\{\(\) => \{[\s\S]*?suppressedMountClickRef\.current === mount\.id[\s\S]*?placeBalloon\(mount\.id, selectedLevel\)/,
+  );
   assert.match(page, /drag-preview/);
   assert.match(page, /returnBalloonToInventory/);
   assert.match(page, /overPlatform/);

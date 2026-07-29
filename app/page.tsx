@@ -31,6 +31,10 @@ type PointerDrag = {
   pointerId: number;
   x: number;
   y: number;
+  startX: number;
+  startY: number;
+  hasMoved: boolean;
+  tapMountId: string | null;
 };
 
 type DragPointerEvent = Pick<
@@ -48,6 +52,8 @@ type DailyChallenge = {
   seed: string;
   difficulty: "normal";
 };
+
+const POINTER_DRAG_THRESHOLD = 6;
 
 function utcDateKey(date = new Date()) {
   const year = String(date.getUTCFullYear()).padStart(4, "0");
@@ -141,6 +147,7 @@ export default function Home() {
   const pointerDragRef = useRef<PointerDrag | null>(null);
   const pointerCaptureTargetRef = useRef<HTMLElement | null>(null);
   const globalDragListenersRef = useRef<GlobalDragListeners | null>(null);
+  const suppressedMountClickRef = useRef<string | null>(null);
 
   useEffect(() => {
     // Chrome decides whether a touch becomes a scroll gesture on the compositor
@@ -365,6 +372,15 @@ export default function Home() {
     setToast(message);
   }
 
+  function suppressNextMountClick(mountId: string) {
+    suppressedMountClickRef.current = mountId;
+    window.setTimeout(() => {
+      if (suppressedMountClickRef.current === mountId) {
+        suppressedMountClickRef.current = null;
+      }
+    }, 0);
+  }
+
   async function loadDailyPuzzle() {
     if (dailyLoading) return;
     setDailyLoading(true);
@@ -389,8 +405,18 @@ export default function Home() {
       return;
     }
     if (nextLevel === currentLevel) return;
+    const nextRemaining = { ...remaining };
+    if (currentLevel !== 0) nextRemaining[currentLevel] += 1;
+    if (nextLevel !== 0) nextRemaining[nextLevel] -= 1;
+    const nextSelectedLevel =
+      selectedLevel !== null && nextRemaining[selectedLevel] > 0
+        ? selectedLevel
+        : (LEVELS.find((level) => nextRemaining[level] > 0) ?? null);
     setHistory((items) => [...items.slice(-39), assignments]);
     setAssignments((current) => ({ ...current, [mountId]: nextLevel }));
+    if (nextSelectedLevel !== selectedLevel) {
+      setSelectedLevel(nextSelectedLevel);
+    }
     setMoves((value) => value + 1);
     if (hint?.mountId === mountId) setHint(null);
   }
@@ -476,10 +502,22 @@ export default function Home() {
     };
   }
 
+  function crossedDragThreshold(
+    drag: PointerDrag,
+    x: number,
+    y: number,
+  ) {
+    return (
+      drag.hasMoved ||
+      Math.hypot(x - drag.startX, y - drag.startY) >= POINTER_DRAG_THRESHOLD
+    );
+  }
+
   function beginPointerDrag(
     event: ReactPointerEvent<HTMLElement>,
     level: BalloonLevel,
     sourceMountId: string | null,
+    tapMountId: string | null = null,
   ) {
     if (
       solved ||
@@ -504,6 +542,10 @@ export default function Home() {
       pointerId: event.pointerId,
       x: event.clientX,
       y: event.clientY,
+      startX: event.clientX,
+      startY: event.clientY,
+      hasMoved: false,
+      tapMountId,
     };
     pointerDragRef.current = nextDrag;
     globalDragListenersRef.current?.remove();
@@ -528,7 +570,7 @@ export default function Home() {
     window.addEventListener("pointerup", handlePointerUp, { passive: false });
     window.addEventListener("pointercancel", handlePointerCancel);
     globalDragListenersRef.current = { pointerId: event.pointerId, remove };
-    setPointerDrag(nextDrag);
+    if (tapMountId === null) setPointerDrag(nextDrag);
     setDraggingMountId(sourceMountId);
     setDragOverMountId(null);
     if (sourceMountId === null) setSelectedLevel(level);
@@ -545,8 +587,12 @@ export default function Home() {
       )
       .find(Boolean);
     const level = sourceMountId ? assignments[sourceMountId] : 0;
-    if (!sourceMountId || !level) return;
-    beginPointerDrag(event, level, sourceMountId);
+    if (!sourceMountId) return;
+    if (level) {
+      beginPointerDrag(event, level, sourceMountId);
+    } else if (selectedLevel !== null) {
+      beginPointerDrag(event, selectedLevel, null, sourceMountId);
+    }
   }
 
   function releasePointerCapture(pointerId: number) {
@@ -568,13 +614,20 @@ export default function Home() {
       event.clientX,
       event.clientY,
     );
-    setPointerDrag({
+    const nextDrag = {
       ...active,
       x: event.clientX,
       y: event.clientY,
-    });
+      hasMoved: crossedDragThreshold(active, event.clientX, event.clientY),
+    };
+    pointerDragRef.current = nextDrag;
+    if (nextDrag.hasMoved || nextDrag.tapMountId === null) {
+      setPointerDrag(nextDrag);
+    }
     setDragOverMountId(
-      targetMountId === active.sourceMountId ? null : targetMountId,
+      nextDrag.hasMoved && targetMountId !== active.sourceMountId
+        ? targetMountId
+        : null,
     );
   }
 
@@ -587,7 +640,26 @@ export default function Home() {
       event.clientX,
       event.clientY,
     );
-    if (targetMountId) {
+    const hasMoved = crossedDragThreshold(
+      active,
+      event.clientX,
+      event.clientY,
+    );
+    if (
+      active.tapMountId &&
+      targetMountId === active.tapMountId &&
+      !hasMoved
+    ) {
+      suppressNextMountClick(targetMountId);
+      placeBalloon(targetMountId, active.level);
+    } else if (
+      active.sourceMountId &&
+      targetMountId === active.sourceMountId &&
+      !hasMoved
+    ) {
+      suppressNextMountClick(targetMountId);
+      placeBalloon(targetMountId, selectedLevel);
+    } else if (targetMountId) {
       dropBalloonOnMount(
         targetMountId,
         active.level,
@@ -846,7 +918,8 @@ export default function Home() {
                     const level = assignments[mount.id] ?? 0;
                     const isHinted = hint?.mountId === mount.id;
                     return (
-                      <div
+                      <button
+                        type="button"
                         key={mount.id}
                         className={`board-cell board-cell--mount${level ? " has-balloon" : " is-empty"}${isHinted ? " is-hinted" : ""}${draggingMountId === mount.id ? " is-dragging" : ""}${dragOverMountId === mount.id && draggingMountId !== mount.id ? " is-drop-target" : ""}`}
                         role="gridcell"
@@ -854,7 +927,20 @@ export default function Home() {
                         data-mount-id={mount.id}
                         data-multiplier={mount.multiplier}
                         aria-label={`第${row + 1}行第${column + 1}列，${mount.multiplier}倍挂载点，${level ? `已放置${level}级气球` : "空"}`}
-                        onClick={() => placeBalloon(mount.id, selectedLevel)}
+                        onPointerUp={(event) => {
+                          if (pointerDragRef.current) return;
+                          event.preventDefault();
+                          event.stopPropagation();
+                          suppressNextMountClick(mount.id);
+                          placeBalloon(mount.id, selectedLevel);
+                        }}
+                        onClick={() => {
+                          if (suppressedMountClickRef.current === mount.id) {
+                            suppressedMountClickRef.current = null;
+                            return;
+                          }
+                          placeBalloon(mount.id, selectedLevel);
+                        }}
                         onKeyDown={(event) => {
                           if (event.key === "Enter" || event.key === " ") {
                             event.preventDefault();
@@ -874,12 +960,10 @@ export default function Home() {
                           </span>
                         )}
                         {level !== 0 && (
-                          <button
-                            type="button"
+                          <span
                             className="mounted-balloon-drag-source"
-                            aria-label="拖动气球到其他挂载点"
+                            aria-hidden="true"
                             title="拖动气球到其他挂载点"
-                            onClick={(event) => event.stopPropagation()}
                             onPointerDown={(event) => {
                               if (event.pointerType !== "mouse") {
                                 beginPointerDrag(event, level, mount.id);
@@ -887,14 +971,14 @@ export default function Home() {
                             }}
                           >
                             <BalloonMark level={level} compact />
-                          </button>
+                          </span>
                         )}
                         {isHinted && (
                           <span className="hint-label">
                             {hint.level === 0 ? "留空" : `${hint.level}级`}
                           </span>
                         )}
-                      </div>
+                      </button>
                     );
                   })}
                 </div>

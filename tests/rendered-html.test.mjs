@@ -119,6 +119,19 @@ test("ships the solver and removes starter-only assets", async () => {
   assert.match(styles, /\.board-cell--mount\[data-multiplier="3"\]/);
   assert.match(
     styles,
+    /\.board-cell\s*\{[\s\S]*?opacity:\s*1;[\s\S]*?cell-enter[^;]*backwards;/,
+  );
+  assert.doesNotMatch(styles, /cell-enter[^;]*forwards/);
+  assert.match(
+    styles,
+    /\.board-cell--mount\.has-balloon\s*\{[\s\S]*?\}\s*\.board-cell--mount:hover\s*\{/,
+  );
+  assert.doesNotMatch(
+    styles,
+    /\.board-cell--mount:hover\s*\{[^}]*transform:/,
+  );
+  assert.match(
+    styles,
     /\.mount-crosshair\s*\{[\s\S]*?pointer-events:\s*none;/,
   );
   assert.match(

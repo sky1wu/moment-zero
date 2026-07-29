@@ -514,8 +514,8 @@ button:focus-visible {
   border-radius: 4px;
   background: var(--tile);
   box-shadow: inset 0 -2px 0 rgba(90, 100, 94, 0.05);
-  opacity: 0;
-  animation: cell-enter 230ms ease-out var(--cell-delay) forwards;
+  opacity: 1;
+  animation: cell-enter 230ms ease-out var(--cell-delay) backwards;
 }
 
 .board-cell::before,
@@ -585,14 +585,6 @@ button:focus-visible {
   --mount-hover: #faf8fd;
 }
 
-.board-cell--mount:hover {
-  z-index: 3;
-  border-color: var(--mount-color);
-  background: var(--mount-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 7px 14px rgba(40, 48, 43, 0.11);
-}
-
 .board-cell--mount.has-balloon {
   border-color: var(--mount-color);
   background: color-mix(in srgb, var(--mount-surface) 62%, var(--tile));
@@ -604,13 +596,23 @@ button:focus-visible {
   user-select: none;
 }
 
+.board-cell--mount:hover {
+  z-index: 3;
+  border-color: var(--mount-color);
+  background: var(--mount-hover);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--mount-color) 16%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--mount-color) 24%, transparent),
+    0 6px 12px rgba(40, 48, 43, 0.1);
+}
+
 .board-cell--mount.has-balloon:active {
   cursor: grabbing;
 }
 
 .board-cell--mount.is-hinted {
   animation:
-    cell-enter 230ms ease-out var(--cell-delay) forwards,
+    cell-enter 230ms ease-out var(--cell-delay) backwards,
     hint-pulse 1s ease-in-out infinite;
 }
 

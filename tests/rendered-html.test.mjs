@@ -35,6 +35,7 @@ test("server-renders the Moment Zero product shell", async () => {
   assert.match(html, /零矩协议/);
   assert.match(html, /平衡全部气球/);
   assert.match(html, /输入题目种子/);
+  assert.match(html, /复制题目种子/);
   assert.match(html, /载入/);
   assert.match(html, /每日一题/);
   assert.doesNotMatch(html, /移除模式/);
@@ -102,6 +103,9 @@ test("ships the solver and removes starter-only assets", async () => {
   assert.match(dailyRoute, /HMAC/);
   assert.doesNotMatch(dailyRoute, /searchParams/);
   assert.match(page, /navigator\.clipboard\.writeText/);
+  assert.match(page, /async function copySeed\(\)/);
+  assert.match(page, /flash\("种子已复制"\)/);
+  assert.match(page, /aria-label="复制题目种子"/);
   assert.match(page, /moment-axis--vertical/);
   assert.match(page, /moment-axis--horizontal/);
   assert.match(page, /moment-axis__arrow/);
@@ -245,6 +249,18 @@ test("ships the solver and removes starter-only assets", async () => {
   assert.match(
     styles,
     /\.mission-setting\s*\{[\s\S]*?align-items:\s*end;/,
+  );
+  assert.match(
+    styles,
+    /\.mission-setting\s*\{[\s\S]*?grid-template-columns:\s*minmax\(260px,\s*320px\) minmax\(150px,\s*1fr\);/,
+  );
+  assert.match(
+    styles,
+    /\.seed-block\s*>\s*div\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\) auto auto;/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width:\s*540px\)[\s\S]*?\.seed-block__copy\s*\{[\s\S]*?display:\s*none;/,
   );
   assert.match(styles, /\.mission-rail\s*>\s*\*,\s*\.mission-setting\s*>\s*\*/);
   assert.match(

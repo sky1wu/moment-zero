@@ -694,6 +694,17 @@ export default function Home() {
     }
   }
 
+  async function copySeed() {
+    const seed = seedDraft.trim().toUpperCase();
+    if (!seed) return;
+    try {
+      await navigator.clipboard.writeText(seed);
+      flash("种子已复制");
+    } catch {
+      flash("复制失败，请手动复制种子");
+    }
+  }
+
   const mountByCell = useMemo(() => {
     const map = new Map<string, Puzzle["mounts"][number]>();
     puzzle?.mounts.forEach((mount) => {
@@ -818,7 +829,20 @@ export default function Home() {
                   aria-label="输入题目种子"
                   onChange={(event) => setSeedDraft(event.target.value)}
                 />
-                <button type="submit" disabled={generating}>
+                <button
+                  type="button"
+                  className="seed-block__copy"
+                  aria-label="复制题目种子"
+                  disabled={!seedDraft.trim()}
+                  onClick={copySeed}
+                >
+                  复制
+                </button>
+                <button
+                  type="submit"
+                  className="seed-block__load"
+                  disabled={generating}
+                >
                   载入
                 </button>
               </div>

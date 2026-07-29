@@ -1140,7 +1140,7 @@ export default function Home() {
                 type="button"
                 onClick={() => setShowCampaign(true)}
               >
-                查看航线 <span aria-hidden="true">⌁</span>
+                查看航线 <span aria-hidden="true">→</span>
               </button>
             </div>
           ) : (
@@ -1588,9 +1588,6 @@ export default function Home() {
               <div>
                 <span className="eyebrow">CAMPAIGN 01 / 百关回收协议</span>
                 <h2 id="campaign-title">百关航线</h2>
-                <p>
-                  固定关卡序列由易至难，每十关穿插一组异形挂载点。
-                </p>
               </div>
               <div className="campaign-modal__summary">
                 <strong>

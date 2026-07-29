@@ -106,7 +106,19 @@ test("ships the solver and removes starter-only assets", async () => {
   assert.match(page, /className="campaign-map-button"/);
   assert.doesNotMatch(
     page,
+    /固定关卡序列由易至难，每十关穿插一组异形挂载点。/,
+  );
+  assert.doesNotMatch(
+    page,
     /gameMode === "campaign" \? "关卡地图" : "闯关模式"/,
+  );
+  assert.match(
+    styles,
+    /\.campaign-map-button\s*\{[\s\S]*?border:\s*1px solid var\(--ink\);[\s\S]*?background:\s*var\(--ink\);[\s\S]*?color:\s*white;/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width:\s*540px\)[\s\S]*?\.campaign-modal__header\s*\{[\s\S]*?padding:\s*56px 20px 19px;/,
   );
   assert.match(dailyRoute, /DAILY_SEED_SECRET/);
   assert.match(dailyRoute, /HMAC/);

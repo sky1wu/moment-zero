@@ -442,19 +442,24 @@ button:focus-visible {
 }
 
 .campaign-map-button {
-  min-height: 32px;
-  padding: 0 10px;
-  border: 0;
-  border-left: 1px solid var(--line);
-  background: transparent;
-  color: var(--muted);
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--ink);
+  border-radius: 5px;
+  background: var(--ink);
+  color: white;
   cursor: pointer;
-  font-size: 9px;
+  font-size: 10px;
+  font-weight: 600;
   white-space: nowrap;
+  transition:
+    background 150ms ease,
+    transform 150ms ease;
 }
 
 .campaign-map-button:hover {
-  color: var(--accent);
+  background: #333936;
+  transform: translateY(-1px);
 }
 
 .mission-metrics {
@@ -1416,7 +1421,7 @@ kbd {
   align-items: flex-end;
   justify-content: space-between;
   gap: 32px;
-  padding: 34px 38px 26px;
+  padding: 56px 38px 26px;
 }
 
 .campaign-modal__header h2 {
@@ -1424,12 +1429,6 @@ kbd {
   font-size: 34px;
   font-weight: 600;
   letter-spacing: -0.045em;
-}
-
-.campaign-modal__header p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 11px;
 }
 
 .campaign-modal__summary {
@@ -2083,7 +2082,7 @@ kbd {
   }
 
   .campaign-modal__header {
-    padding: 28px 25px 22px;
+    padding: 56px 25px 22px;
   }
 
   .campaign-chapter {
@@ -2270,15 +2269,11 @@ kbd {
 
   .campaign-modal__header {
     align-items: flex-start;
-    padding: 26px 20px 19px;
+    padding: 56px 20px 19px;
   }
 
   .campaign-modal__header h2 {
     font-size: 29px;
-  }
-
-  .campaign-modal__header p {
-    max-width: 260px;
   }
 
   .campaign-modal__summary strong {

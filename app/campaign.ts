@@ -3,6 +3,10 @@ import type { Difficulty, SlotLevel } from "./game-core";
 export const CAMPAIGN_VERSION = 1;
 export const CAMPAIGN_STORAGE_KEY = `moment-zero-campaign:v${CAMPAIGN_VERSION}`;
 export const CAMPAIGN_TOTAL = 100;
+export const CAMPAIGN_HINT_CAPACITY = 5;
+export const CAMPAIGN_INITIAL_HINTS = 5;
+export const CAMPAIGN_HINT_RECOVERY_INTERVAL = 5;
+export const CAMPAIGN_HINT_RECOVERY_AMOUNT = 1;
 
 export type CampaignPattern = "central" | "axis" | "freeform";
 
@@ -26,6 +30,7 @@ export type CampaignProgress = {
   version: typeof CAMPAIGN_VERSION;
   currentLevel: number;
   completed: number[];
+  hintBalance: number;
   inProgress: CampaignSnapshot | null;
 };
 
@@ -107,6 +112,7 @@ export function createCampaignProgress(): CampaignProgress {
     version: CAMPAIGN_VERSION,
     currentLevel: 1,
     completed: [],
+    hintBalance: CAMPAIGN_INITIAL_HINTS,
     inProgress: null,
   };
 }
@@ -139,6 +145,7 @@ export function parseCampaignProgress(raw: string | null): CampaignProgress {
       version: CAMPAIGN_VERSION,
       currentLevel: Math.max(1, Math.min(unlockedThrough, requestedLevel)),
       completed,
+      hintBalance: normalizeHintBalance(data.hintBalance),
       inProgress: snapshot,
     };
   } catch {
@@ -179,6 +186,28 @@ function parseCampaignSnapshot(
     hints: normalizeCounter(value.hints),
     elapsed: normalizeCounter(value.elapsed),
   };
+}
+
+export function recoverCampaignHints(
+  hintBalance: number,
+  completedCount: number,
+) {
+  const normalized = normalizeHintBalance(hintBalance);
+  if (
+    completedCount <= 0 ||
+    completedCount % CAMPAIGN_HINT_RECOVERY_INTERVAL !== 0
+  ) {
+    return normalized;
+  }
+  return Math.min(
+    CAMPAIGN_HINT_CAPACITY,
+    normalized + CAMPAIGN_HINT_RECOVERY_AMOUNT,
+  );
+}
+
+function normalizeHintBalance(value: number | undefined) {
+  if (!Number.isFinite(value)) return CAMPAIGN_INITIAL_HINTS;
+  return Math.max(0, Math.min(CAMPAIGN_HINT_CAPACITY, Math.floor(value ?? 0)));
 }
 
 function normalizeCounter(value: number) {

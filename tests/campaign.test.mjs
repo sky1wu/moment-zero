@@ -1,11 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  CAMPAIGN_HINT_CAPACITY,
+  CAMPAIGN_HINT_RECOVERY_AMOUNT,
+  CAMPAIGN_HINT_RECOVERY_INTERVAL,
+  CAMPAIGN_INITIAL_HINTS,
   CAMPAIGN_LEVELS,
   CAMPAIGN_TOTAL,
   CAMPAIGN_VERSION,
   getCampaignUnlockedThrough,
   parseCampaignProgress,
+  recoverCampaignHints,
 } from "../app/campaign.ts";
 import { generatePuzzle } from "../app/game-core.ts";
 
@@ -73,6 +78,7 @@ test("campaign progress restores safely and never unlocks past the first gap", (
       version: CAMPAIGN_VERSION,
       currentLevel: 99,
       completed: [3, 1, 1, 2, 999],
+      hintBalance: 2.8,
       inProgress: {
         level: 4,
         assignments: { p1: 2, p2: 8, invalid: 1 },
@@ -85,6 +91,7 @@ test("campaign progress restores safely and never unlocks past the first gap", (
 
   assert.deepEqual(progress.completed, [1, 2, 3]);
   assert.equal(progress.currentLevel, 4);
+  assert.equal(progress.hintBalance, 2);
   assert.deepEqual(progress.inProgress, {
     level: 4,
     assignments: { p1: 2 },
@@ -96,6 +103,30 @@ test("campaign progress restores safely and never unlocks past the first gap", (
     version: CAMPAIGN_VERSION,
     currentLevel: 1,
     completed: [],
+    hintBalance: CAMPAIGN_INITIAL_HINTS,
     inProgress: null,
   });
+});
+
+test("campaign hints are shared, capped, and recover only at milestones", () => {
+  assert.equal(CAMPAIGN_INITIAL_HINTS, 5);
+  assert.equal(CAMPAIGN_HINT_CAPACITY, 5);
+  assert.equal(CAMPAIGN_HINT_RECOVERY_INTERVAL, 5);
+  assert.equal(CAMPAIGN_HINT_RECOVERY_AMOUNT, 1);
+  assert.equal(recoverCampaignHints(0, 4), 0);
+  assert.equal(recoverCampaignHints(0, 5), 1);
+  assert.equal(recoverCampaignHints(4, 10), 5);
+  assert.equal(recoverCampaignHints(5, 15), 5);
+  assert.equal(recoverCampaignHints(2, 16), 2);
+  assert.equal(
+    parseCampaignProgress(
+      JSON.stringify({
+        version: CAMPAIGN_VERSION,
+        currentLevel: 3,
+        completed: [1, 2],
+        inProgress: null,
+      }),
+    ).hintBalance,
+    CAMPAIGN_INITIAL_HINTS,
+  );
 });

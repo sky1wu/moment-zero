@@ -25,6 +25,10 @@ import {
 } from "./game-core";
 import {
   CAMPAIGN_CHAPTERS,
+  CAMPAIGN_HINT_CAPACITY,
+  CAMPAIGN_HINT_RECOVERY_AMOUNT,
+  CAMPAIGN_HINT_RECOVERY_INTERVAL,
+  CAMPAIGN_INITIAL_HINTS,
   CAMPAIGN_LEVELS,
   CAMPAIGN_PATTERN_LABELS,
   CAMPAIGN_STORAGE_KEY,
@@ -34,6 +38,7 @@ import {
   getCampaignLevel,
   getCampaignUnlockedThrough,
   parseCampaignProgress,
+  recoverCampaignHints,
   type CampaignProgress,
   type CampaignSnapshot,
 } from "./campaign";
@@ -183,6 +188,10 @@ export default function Home() {
   const [bestTime, setBestTime] = useState<number | null>(null);
   const [campaignLevel, setCampaignLevel] = useState(1);
   const [campaignCompleted, setCampaignCompleted] = useState<number[]>([]);
+  const [campaignHintBalance, setCampaignHintBalance] = useState(
+    CAMPAIGN_INITIAL_HINTS,
+  );
+  const [campaignHintReward, setCampaignHintReward] = useState(0);
   const [showCampaign, setShowCampaign] = useState(false);
   const startedAt = useRef(Date.now());
   const completionHandled = useRef(false);
@@ -226,6 +235,7 @@ export default function Home() {
       setGenerating(true);
       setError("");
       setShowSuccess(false);
+      setCampaignHintReward(0);
       setHint(null);
       completionHandled.current = false;
 
@@ -315,6 +325,7 @@ export default function Home() {
       setStreak(storedStreak);
       setCampaignCompleted(campaignProgress.completed);
       setCampaignLevel(campaignProgress.currentLevel);
+      setCampaignHintBalance(campaignProgress.hintBalance);
       if (requestedMode === "campaign") {
         const level = getCampaignLevel(initialCampaignLevel);
         loadPuzzle(level.seed, level.difficulty, {
@@ -430,10 +441,21 @@ export default function Home() {
       window.localStorage.setItem(bestKey, String(elapsed));
     }
     let nextCampaignCompleted = campaignCompleted;
+    let nextCampaignHintBalance = campaignHintBalance;
+    let nextCampaignHintReward = 0;
     if (gameMode === "campaign") {
+      const firstCompletion = !campaignCompleted.includes(campaignLevel);
       nextCampaignCompleted = Array.from(
         new Set([...campaignCompleted, campaignLevel]),
       ).sort((left, right) => left - right);
+      if (firstCompletion) {
+        nextCampaignHintBalance = recoverCampaignHints(
+          campaignHintBalance,
+          nextCampaignCompleted.length,
+        );
+        nextCampaignHintReward =
+          nextCampaignHintBalance - campaignHintBalance;
+      }
       const nextLevel = Math.min(CAMPAIGN_TOTAL, campaignLevel + 1);
       window.localStorage.setItem(
         CAMPAIGN_STORAGE_KEY,
@@ -441,6 +463,7 @@ export default function Home() {
           version: CAMPAIGN_VERSION,
           currentLevel: nextLevel,
           completed: nextCampaignCompleted,
+          hintBalance: nextCampaignHintBalance,
           inProgress: null,
         } satisfies CampaignProgress),
       );
@@ -450,12 +473,15 @@ export default function Home() {
       if (shouldUpdateBest) setBestTime(elapsed);
       if (gameMode === "campaign") {
         setCampaignCompleted(nextCampaignCompleted);
+        setCampaignHintBalance(nextCampaignHintBalance);
+        setCampaignHintReward(nextCampaignHintReward);
       }
       setShowSuccess(true);
     }, 520);
     return () => window.clearTimeout(successTimer);
   }, [
     campaignCompleted,
+    campaignHintBalance,
     campaignLevel,
     elapsed,
     gameMode,
@@ -481,6 +507,7 @@ export default function Home() {
         version: CAMPAIGN_VERSION,
         currentLevel: campaignLevel,
         completed: campaignCompleted,
+        hintBalance: campaignHintBalance,
         inProgress: {
           level: campaignLevel,
           assignments,
@@ -495,6 +522,7 @@ export default function Home() {
     activeCampaignLevel.seed,
     assignments,
     campaignCompleted,
+    campaignHintBalance,
     campaignLevel,
     elapsed,
     gameMode,
@@ -590,9 +618,11 @@ export default function Home() {
         version: CAMPAIGN_VERSION,
         currentLevel: level.number,
         completed,
+        hintBalance: storedProgress.hintBalance,
         inProgress: snapshot,
       } satisfies CampaignProgress),
     );
+    setCampaignHintBalance(storedProgress.hintBalance);
     loadPuzzle(level.seed, level.difficulty, {
       mode: "campaign",
       campaignLevel: level.number,
@@ -666,6 +696,12 @@ export default function Home() {
 
   function revealHint() {
     if (!puzzle || solved) return;
+    if (gameMode === "campaign" && campaignHintBalance <= 0) {
+      flash(
+        `提示已用完；每通过 ${CAMPAIGN_HINT_RECOVERY_INTERVAL} 关恢复 ${CAMPAIGN_HINT_RECOVERY_AMOUNT} 次`,
+      );
+      return;
+    }
     const target = puzzle.mounts.find(
       (mount) => (assignments[mount.id] ?? 0) !== puzzle.solution[mount.id],
     );
@@ -673,6 +709,9 @@ export default function Home() {
     const level = puzzle.solution[target.id];
     setHint({ mountId: target.id, level });
     setHints((value) => value + 1);
+    if (gameMode === "campaign") {
+      setCampaignHintBalance((value) => Math.max(0, value - 1));
+    }
     flash(level === 0 ? "标记位置应保持为空" : `标记位置应使用 ${level} 级气球`);
   }
 
@@ -1181,10 +1220,10 @@ export default function Home() {
               </dd>
             </div>
             <div>
-              <dt>{gameMode === "campaign" ? "航段" : "最佳"}</dt>
+              <dt>{gameMode === "campaign" ? "提示" : "最佳"}</dt>
               <dd>
                 {gameMode === "campaign"
-                  ? `${String(activeCampaignChapter.number).padStart(2, "0")}/10`
+                  ? `${campaignHintBalance}/${CAMPAIGN_HINT_CAPACITY}`
                   : bestTime === null
                     ? "--:--"
                     : formatTime(bestTime)}
@@ -1400,8 +1439,17 @@ export default function Home() {
               重置
               <kbd>R</kbd>
             </button>
-            <button type="button" onClick={revealHint} disabled={solved}>
-              提示
+            <button
+              type="button"
+              onClick={revealHint}
+              disabled={
+                solved ||
+                (gameMode === "campaign" && campaignHintBalance <= 0)
+              }
+            >
+              {gameMode === "campaign"
+                ? `提示 ${campaignHintBalance}/${CAMPAIGN_HINT_CAPACITY}`
+                : "提示"}
               <kbd>H</kbd>
             </button>
           </div>
@@ -1493,6 +1541,15 @@ export default function Home() {
                 <span>03</span>
                 必须用完库存中的全部气球，空挂载点可以作为干扰项。
               </li>
+              {gameMode === "campaign" && (
+                <li>
+                  <span>04</span>
+                  闯关提示全程共用，初始 {CAMPAIGN_INITIAL_HINTS} 次；每首次通过{" "}
+                  {CAMPAIGN_HINT_RECOVERY_INTERVAL} 关恢复{" "}
+                  {CAMPAIGN_HINT_RECOVERY_AMOUNT} 次，上限{" "}
+                  {CAMPAIGN_HINT_CAPACITY} 次。
+                </li>
+              )}
             </ol>
             <button
               className="button button--primary button--wide"
@@ -1601,9 +1658,10 @@ export default function Home() {
 
             <footer className="campaign-modal__footer">
               <span>
-                进度仅保存在当前浏览器
+                提示池 {campaignHintBalance}/{CAMPAIGN_HINT_CAPACITY}
                 <i aria-hidden="true" />
-                {campaignCompletionPercent}% 已完成
+                每通过 {CAMPAIGN_HINT_RECOVERY_INTERVAL} 关恢复{" "}
+                {CAMPAIGN_HINT_RECOVERY_AMOUNT} 次
               </span>
               <button
                 className="button button--primary"
@@ -1658,6 +1716,9 @@ export default function Home() {
                   ? "全部回收轨迹均已稳定。百关协议执行完毕。"
                   : "本关横向与纵向力矩均已归零，下一关现已解锁。"
                 : "横向与纵向力矩均已归零。当前浮空配置可以执行回收。"}
+              {gameMode === "campaign" && campaignHintReward > 0
+                ? ` 提示补给恢复 ${campaignHintReward} 次，当前 ${campaignHintBalance}/${CAMPAIGN_HINT_CAPACITY}。`
+                : ""}
             </p>
             <dl>
               <div>
@@ -1669,7 +1730,7 @@ export default function Home() {
                 <dd>{moves}</dd>
               </div>
               <div>
-                <dt>提示次数</dt>
+                <dt>{gameMode === "campaign" ? "本关提示" : "提示次数"}</dt>
                 <dd>{hints}</dd>
               </div>
               <div>

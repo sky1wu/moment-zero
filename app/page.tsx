@@ -1082,14 +1082,6 @@ export default function Home() {
           style={{
             left: pointerDrag.x,
             top: pointerDrag.y,
-            width: 108,
-            height: 108,
-            minWidth: 108,
-            maxWidth: 108,
-            minHeight: 108,
-            maxHeight: 108,
-            aspectRatio: "1 / 1",
-            boxSizing: "border-box",
           }}
         >
           <BalloonMark level={pointerDrag.level} />

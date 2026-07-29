@@ -1732,6 +1732,29 @@ kbd {
     height: 34px;
   }
 
+  .drag-preview--card {
+    width: 92px !important;
+    min-width: 92px;
+    max-width: 92px;
+    height: 92px !important;
+    min-height: 92px;
+    max-height: 92px;
+    padding: 6px 7px 7px;
+  }
+
+  .drag-preview--card .balloon-mark {
+    width: 48px;
+    height: 48px;
+  }
+
+  .drag-preview__copy strong {
+    font-size: 10px;
+  }
+
+  .drag-preview__copy small {
+    font-size: 7px;
+  }
+
   .inventory-actions {
     margin-top: 6px;
     padding-top: 0;

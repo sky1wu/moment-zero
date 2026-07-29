@@ -228,12 +228,15 @@ test("ships the solver and removes starter-only assets", async () => {
   assert.match(page, /查看完成结果/);
   assert.match(page, /event\.key === "Escape" && showSuccess/);
   assert.match(page, /event\.target === event\.currentTarget/);
-  assert.match(page, /minWidth:\s*108/);
-  assert.match(page, /maxHeight:\s*108/);
-  assert.match(page, /aspectRatio:\s*"1 \/ 1"/);
+  assert.doesNotMatch(page, /minWidth:\s*108/);
+  assert.doesNotMatch(page, /maxHeight:\s*108/);
   assert.match(
     styles,
     /\.drag-preview--card\s*\{[\s\S]*?width:\s*108px !important;[\s\S]*?height:\s*108px !important;/,
+  );
+  assert.match(
+    styles,
+    /@media \(max-width:\s*820px\)[\s\S]*?\.drag-preview--card\s*\{[\s\S]*?width:\s*92px !important;[\s\S]*?height:\s*92px !important;/,
   );
   assert.match(
     styles,

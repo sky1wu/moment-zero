@@ -696,13 +696,24 @@ button:focus-visible {
 
 .mount-multiplier {
   position: absolute;
-  z-index: 4;
-  top: 5px;
-  right: 6px;
+  z-index: 7;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  min-width: clamp(24px, 2.2vw, 32px);
+  height: clamp(18px, 1.8vw, 23px);
+  padding: 0 4px;
+  place-items: center;
+  border: 1px solid var(--mount-color);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mount-surface) 76%, white);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--mount-color) 18%, transparent);
   color: var(--mount-color);
   font-family: var(--font-mono);
-  font-size: clamp(7px, 0.72vw, 9px);
-  font-weight: 650;
+  font-size: clamp(10px, 0.9vw, 13px);
+  font-weight: 750;
+  letter-spacing: -0.04em;
+  line-height: 1;
 }
 
 .hint-label {
